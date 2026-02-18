@@ -156,5 +156,3 @@ INSERT INTO zone_utilization VALUES
 ('zone-a','Zone A','ambient',500,420,84,12,5,NULL,'active'),
 ('zone-b','Zone B','ambient',400,280,70,8,3,NULL,'active'),
 ('zone-c','Zone C','cold-storage',200,185,92.5,4,2,-18,'active');
-
-
