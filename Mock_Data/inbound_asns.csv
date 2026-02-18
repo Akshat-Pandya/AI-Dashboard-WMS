@@ -1,0 +1,9 @@
+id,asnNumber,status,supplierName,expectedDate,actualDate,totalLines,receivedLines,totalUnits,receivedUnits,dock,poNumber,isOverdue
+ASN001,ASN-2026-1201,receiving,Siemens Industrial Supply,2026-02-17T10:00:00Z,2026-02-17T09:45:00Z,4,2,200,120,Dock 3,PO-8834,false
+ASN002,ASN-2026-1198,expected,Bosch Automation Parts,2026-02-16T14:00:00Z,,6,0,450,0,Dock 1,PO-8820,true
+ASN003,ASN-2026-1202,received,ABB Industrial Supplies,2026-02-16T10:00:00Z,2026-02-16T09:40:00Z,5,5,320,320,Dock 2,PO-8838,false
+ASN004,ASN-2026-1203,receiving,Schneider Electric India,2026-02-17T12:00:00Z,2026-02-17T11:50:00Z,7,3,540,210,Dock 4,PO-8841,false
+ASN005,ASN-2026-1204,expected,Delta Automation Ltd,2026-02-18T09:30:00Z,,4,0,260,0,Dock 1,PO-8845,false
+ASN006,ASN-2026-1205,overdue,Yaskawa Robotics,2026-02-16T15:00:00Z,,6,0,410,0,Dock 5,PO-8848,true
+ASN007,ASN-2026-1206,received,Panasonic Industrial,2026-02-17T08:30:00Z,2026-02-17T08:20:00Z,3,3,180,180,Dock 2,PO-8851,false
+ASN008,ASN-2026-1207,receiving,Mitsubishi Electric,2026-02-17T13:00:00Z,2026-02-17T12:45:00Z,8,4,600,300,Dock 3,PO-8854,false

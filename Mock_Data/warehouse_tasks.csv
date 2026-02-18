@@ -1,0 +1,16 @@
+id,taskType,status,priority,assignedTo,assigneeName,zone,sourceLocation,destinationLocation,referenceId,createdAt,startedAt,completedAt,estimatedMinutes,isBlocked,blockReason
+TSK001,picking,in-progress,high,OP-101,Rajesh Kumar,Zone A,A-01-03,D-STAGE-01,ORD001,2026-02-17T08:00:00Z,2026-02-17T08:15:00Z,,25,false,
+TSK002,put-away,blocked,medium,OP-103,Priya Singh,Zone B,DOCK-3,B-05-02,ASN001,2026-02-17T09:50:00Z,,,15,true,"Destination location occupied — awaiting replenishment cycle"
+TSK003,picking,in-progress,medium,OP-104,Amit Verma,Zone B,B-03-05,D-STAGE-02,ORD003,2026-02-17T08:20:00Z,2026-02-17T08:35:00Z,,30,false,
+TSK004,picking,queued,high,OP-105,Neha Gupta,Zone A,A-02-07,D-STAGE-03,ORD007,2026-02-17T09:00:00Z,,,20,false,
+TSK005,packing,in-progress,medium,OP-106,Suresh Patel,Zone D,D-PACK-01,D-OUT-01,ORD004,2026-02-17T09:15:00Z,2026-02-17T09:25:00Z,,25,false,
+TSK006,put-away,queued,low,OP-107,Kavita Sharma,Zone C,DOCK-4,C-03-04,ASN004,2026-02-17T10:10:00Z,,,18,false,
+TSK007,replenishment,in-progress,high,OP-108,Rohan Das,Zone A,A-05-02,A-01-03,INV007,2026-02-17T10:30:00Z,2026-02-17T10:40:00Z,,15,false,
+TSK008,cycle-count,queued,medium,OP-109,Pooja Nair,Zone C,C-02-02,C-02-02,INV005,2026-02-17T11:00:00Z,,,12,false,
+TSK009,picking,blocked,high,OP-110,Vikram Singh,Zone B,B-01-01,D-STAGE-01,ORD009,2026-02-17T11:10:00Z,,,28,true,Item short — awaiting replenishment
+TSK010,loading,queued,medium,OP-111,Arjun Mehta,Zone D,D-STAGE-02,DOCK-OUT-02,ORD005,2026-02-17T11:20:00Z,,,22,false,
+TSK011,unloading,in-progress,medium,OP-112,Sneha Iyer,Zone D,DOCK-3,D-RECV-01,ASN001,2026-02-17T11:30:00Z,2026-02-17T11:35:00Z,,35,false,
+TSK012,put-away,queued,medium,OP-113,Deepak Yadav,Zone B,DOCK-2,B-04-02,ASN003,2026-02-17T11:45:00Z,,,16,false,
+TSK013,packing,queued,low,OP-114,Ritu Kapoor,Zone D,D-PACK-02,D-OUT-02,ORD008,2026-02-17T12:00:00Z,,,20,false,
+TSK014,replenishment,queued,high,OP-115,Manoj Kumar,Zone A,A-07-02,A-02-07,INV025,2026-02-17T12:10:00Z,,,14,false,
+TSK015,maintenance,in-progress,low,OP-116,Anil Joshi,Zone C,C-01-01,C-01-01,ZONE-C,2026-02-17T12:20:00Z,2026-02-17T12:25:00Z,,40,false,

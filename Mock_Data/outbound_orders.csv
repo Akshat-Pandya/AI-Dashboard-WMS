@@ -1,0 +1,11 @@
+id,orderNumber,status,priority,customerName,totalLines,pickedLines,packedLines,totalUnits,createdAt,dueDate,waveId,carrier,stagingZone
+ORD001,WO-2026-0451,picking,high,AutoTech Manufacturing,5,2,0,48,2026-02-17T06:00:00Z,2026-02-17T18:00:00Z,WAVE-042,DHL Express,Zone D
+ORD002,WO-2026-0452,pending,urgent,RoboSys India Pvt Ltd,3,0,0,12,2026-02-17T07:30:00Z,2026-02-17T14:00:00Z,,BlueDart,Zone D
+ORD003,WO-2026-0453,picking,medium,Precision Auto Components,6,3,1,72,2026-02-17T08:10:00Z,2026-02-18T12:00:00Z,WAVE-043,Delhivery,Zone D
+ORD004,WO-2026-0454,packed,high,NextGen Robotics Ltd,4,4,4,36,2026-02-17T05:50:00Z,2026-02-17T16:00:00Z,WAVE-041,BlueDart,Zone D
+ORD005,WO-2026-0455,shipped,medium,Omega Industrial Solutions,7,7,7,95,2026-02-16T14:30:00Z,2026-02-17T10:00:00Z,WAVE-039,DHL Express,Zone D
+ORD006,WO-2026-0456,pending,low,Metro Engineering Works,2,0,0,8,2026-02-17T09:40:00Z,2026-02-19T15:00:00Z,,Ecom Express,Zone D
+ORD007,WO-2026-0457,picking,urgent,FutureTech Automation,5,1,0,41,2026-02-17T10:05:00Z,2026-02-17T20:00:00Z,WAVE-044,BlueDart,Zone D
+ORD008,WO-2026-0458,packed,medium,Alpha Manufacturing Co,3,3,3,27,2026-02-17T07:10:00Z,2026-02-17T17:30:00Z,WAVE-042,DTDC,Zone D
+ORD009,WO-2026-0459,picking,high,Prime Robotics Pvt Ltd,6,2,0,63,2026-02-17T11:00:00Z,2026-02-18T13:00:00Z,WAVE-045,DHL Express,Zone D
+ORD010,WO-2026-0460,cancelled,low,Vertex Industrial Systems,4,0,0,30,2026-02-16T12:20:00Z,2026-02-17T09:00:00Z,,Delhivery,Zone D

@@ -1,0 +1,6 @@
+id,severity,title,message,category,timestamp,acknowledged,zone
+ALT001,critical,Zone C Temperature Rising,"Cold storage Zone C temperature at -15°C, threshold is -18°C. Compressor check required.",environmental,2026-02-17T10:30:00Z,false,Zone C
+ALT002,error,4 Tasks Blocked in Zone B,"Put-away tasks blocked due to occupied destination locations. Replenishment cycle needed.",operations,2026-02-17T09:55:00Z,false,Zone B
+ALT003,warning,Overdue Inbound Shipment,"ASN-2026-1198 from Bosch Automation Parts is 20 hours overdue.",inbound,2026-02-17T10:00:00Z,false,
+ALT004,warning,6 SKUs Below Reorder Point,"Bearings, Safety equipment, and Pneumatics categories have critically low stock levels.",inventory,2026-02-17T08:00:00Z,true,
+ALT005,info,Shift Change at 14:00,"Afternoon shift starts at 14:00. 12 operators scheduled.",staffing,2026-02-17T07:00:00Z,true,

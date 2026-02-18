@@ -4,12 +4,19 @@ from typing import Optional, Dict, List
 
 
 class Intent(str, Enum):
-    LOW_STOCK = "LOW_STOCK"
-    INVENTORY = "INVENTORY"
-    ORDERS = "ORDERS"
-    TASKS = "TASKS"
-    OVERVIEW = "OVERVIEW"
-    UNKNOWN = "UNKNOWN"
+    WAREHOUSE_OVERVIEW = "warehouse_overview"
+    LOW_STOCK = "low_stock"
+    INVENTORY_LOOKUP = "inventory_lookup"
+    ZONE_INVENTORY_COMPARE = "zone_inventory_compare"
+    ORDER_STATUS = "order_status"
+    ORDERS_STUCK = "orders_stuck"
+    ACTIVE_TASKS = "active_tasks"
+    BLOCKED_TASKS = "blocked_tasks"
+    INBOUND_ACTIVITY = "inbound_activity"
+    OVERDUE_ASN = "overdue_asn"
+    WAREHOUSE_ALERTS = "warehouse_alerts"
+    KPI_SUMMARY = "kpi_summary"
+    UNKNOWN = "unknown"
 
 
 class IntentRequest(BaseModel):

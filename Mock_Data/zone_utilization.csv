@@ -1,0 +1,6 @@
+zoneId,zoneName,zoneType,totalCapacity,usedCapacity,utilizationPercent,activeTasks,activeWorkers,temperature,status
+zone-a,Zone A,ambient,500,420,84,12,5,,active
+zone-b,Zone B,ambient,400,280,70,8,3,,active
+zone-c,Zone C,cold-storage,200,185,92.5,4,2,-18,active
+zone-d,Zone D (Staging),staging,150,90,60,6,4,,active
+zone-e,Zone E (Hazmat),hazmat,100,45,45,1,1,,active

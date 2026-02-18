@@ -1,0 +1,31 @@
+id,sku,productName,zone,location,quantityOnHand,quantityReserved,quantityAvailable,reorderPoint,status,lastUpdated,unitOfMeasure,weight,category
+INV001,SKU-A1001,Industrial Bearing 6205,Zone A,A-01-03,5,2,3,20,available,2026-02-17T08:30:00Z,EA,0.12,Bearings
+INV002,SKU-A1002,Conveyor Belt Section 2M,Zone A,A-02-07,150,30,120,25,available,2026-02-17T09:15:00Z,EA,4.5,Conveyors
+INV003,SKU-B2001,Servo Motor SM-400,Zone B,B-01-01,8,8,0,10,reserved,2026-02-17T07:45:00Z,EA,3.2,Motors
+INV004,SKU-B2002,PLC Controller Unit X200,Zone B,B-03-05,45,10,35,15,available,2026-02-17T10:00:00Z,EA,1.8,Controllers
+INV005,SKU-C3001,Safety Light Curtain SLC-80,Zone C,C-02-02,2,0,2,5,available,2026-02-16T14:30:00Z,EA,0.9,Safety
+INV006,SKU-A1003,Pneumatic Cylinder PC-50,Zone A,A-04-01,0,0,0,12,available,2026-02-15T16:00:00Z,EA,2.1,Pneumatics
+INV007,SKU-A1004,Hydraulic Pump HP-20,Zone A,A-05-02,18,4,14,10,available,2026-02-17T11:10:00Z,EA,6.4,Hydraulics
+INV008,SKU-A1005,Linear Guide Rail LG-300,Zone A,A-06-01,60,12,48,20,available,2026-02-17T11:25:00Z,EA,3.6,Motion
+INV009,SKU-A1006,Industrial Coupling IC-90,Zone A,A-02-03,22,5,17,15,available,2026-02-17T10:40:00Z,EA,0.8,Mechanical
+INV010,SKU-A1007,Air Filter Cartridge AF-10,Zone A,A-03-06,95,20,75,30,available,2026-02-17T09:55:00Z,EA,0.3,Maintenance
+INV011,SKU-B2003,Variable Frequency Drive VFD-5HP,Zone B,B-02-04,12,3,9,8,available,2026-02-17T08:20:00Z,EA,5.1,Drives
+INV012,SKU-B2004,Control Panel Enclosure CE-24,Zone B,B-04-02,40,6,34,15,available,2026-02-17T07:50:00Z,EA,7.8,Enclosures
+INV013,SKU-B2005,Industrial Power Supply PS-24V,Zone B,B-01-05,55,10,45,20,available,2026-02-17T10:05:00Z,EA,1.2,Electrical
+INV014,SKU-B2006,HMI Touch Panel TP-700,Zone B,B-05-03,9,2,7,10,available,2026-02-16T16:40:00Z,EA,2.4,Controllers
+INV015,SKU-B2007,Stepper Motor ST-57,Zone B,B-03-01,28,8,20,15,available,2026-02-17T09:10:00Z,EA,1.9,Motors
+INV016,SKU-C3002,Thermal Sensor TS-100,Zone C,C-01-01,75,10,65,25,available,2026-02-17T08:05:00Z,EA,0.15,Sensors
+INV017,SKU-C3003,Pressure Sensor PR-20,Zone C,C-03-04,33,6,27,12,available,2026-02-17T10:25:00Z,EA,0.2,Sensors
+INV018,SKU-C3004,Industrial Camera ICAM-2K,Zone C,C-04-02,14,3,11,8,available,2026-02-17T11:00:00Z,EA,0.7,Vision
+INV019,SKU-C3005,Emergency Stop Switch ES-1,Zone C,C-02-05,120,15,105,40,available,2026-02-17T09:35:00Z,EA,0.25,Safety
+INV020,SKU-D4001,Pallet Jack PJ-2500,Zone D,D-01-01,6,1,5,3,available,2026-02-17T07:30:00Z,EA,65,Material Handling
+INV021,SKU-D4002,Shrink Wrap Roll SW-500,Zone D,D-02-03,200,40,160,50,available,2026-02-17T08:45:00Z,EA,1.1,Packaging
+INV022,SKU-D4003,Shipping Label Pack SL-1K,Zone D,D-03-02,500,50,450,100,available,2026-02-17T10:15:00Z,EA,0.05,Packaging
+INV023,SKU-E5001,Chemical Drum CD-50L,Zone E,E-01-02,25,5,20,10,available,2026-02-17T09:05:00Z,EA,18,Hazmat
+INV024,SKU-E5002,Protective Gloves PG-XL,Zone E,E-02-01,300,30,270,80,available,2026-02-17T11:20:00Z,EA,0.02,Safety
+INV025,SKU-A1008,Roller Conveyor RC-1M,Zone A,A-07-02,32,6,26,15,available,2026-02-17T08:55:00Z,EA,8.5,Conveyors
+INV026,SKU-B2008,Circuit Breaker CB-63A,Zone B,B-06-04,70,12,58,25,available,2026-02-17T10:50:00Z,EA,0.6,Electrical
+INV027,SKU-C3006,Barcode Scanner BS-USB,Zone C,C-05-01,48,9,39,20,available,2026-02-17T09:25:00Z,EA,0.35,IT Equipment
+INV028,SKU-D4004,Wooden Pallet WP-1200,Zone D,D-04-01,90,10,80,30,available,2026-02-17T08:35:00Z,EA,12,Material Handling
+INV029,SKU-A1009,Gearbox GB-40,Zone A,A-08-03,11,2,9,6,available,2026-02-17T10:35:00Z,EA,9.7,Mechanical
+INV030,SKU-B2009,Industrial Fan IF-24,Zone B,B-07-02,16,4,12,8,available,2026-02-17T11:05:00Z,EA,5.9,HVAC

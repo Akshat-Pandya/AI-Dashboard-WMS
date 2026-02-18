@@ -1,0 +1,7 @@
+id,label,value,previousValue,unit,trend,changePercent,category,target,isOnTarget
+KPI001,Orders Fulfilled Today,156,142,orders,up,9.9,throughput,150,true
+KPI002,Pick Accuracy,99.2,98.8,%,up,0.4,accuracy,99.5,false
+KPI003,Avg Fulfillment Time,42,48,min,down,-12.5,efficiency,45,true
+KPI004,Warehouse Utilization,78.5,75.2,%,up,4.4,utilization,85,false
+KPI005,Blocked Tasks,4,2,tasks,up,100,efficiency,0,false
+KPI006,Inbound Received Today,1240,980,units,up,26.5,throughput,1000,true
