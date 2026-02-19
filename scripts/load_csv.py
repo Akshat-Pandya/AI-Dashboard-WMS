@@ -2,68 +2,77 @@ import os
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-# -----------------------
-# DB CONFIG
-# -----------------------
 DB_URL = "mysql+pymysql://root:root@localhost:3307/wms"
-CSV_DIR = "db/seed/csv"
 
-engine = create_engine(DB_URL)
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+CSV_DIR = os.path.join(BASE_DIR, "db", "seed", "csv")
 
-# -----------------------
-# Helpers
-# -----------------------
-def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    df.columns = [c.strip().lower() for c in df.columns]
-    return df
 
-def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.where(pd.notnull(df), None)
+def camel_to_snake(col):
+    out = []
+    for c in col:
+        if c.isupper():
+            out.append("_" + c.lower())
+        else:
+            out.append(c)
+    return "".join(out).lstrip("_")
 
+
+TABLE_CONFIG = {
+    "inbound_asns.csv": "inbound_asns",
+    "inventory_items.csv": "inventory_items",
+    "outbound_orders.csv": "outbound_orders",
+    "warehouse_alerts.csv": "warehouse_alerts",
+    "warehouse_kpis.csv": "warehouse_kpis",
+    "warehouse_tasks.csv": "warehouse_tasks",
+    "zone_utilization.csv": "zone_utilization",
+}
+
+
+def normalize_datetimes(df):
     for col in df.columns:
-        if df[col].dtype == object:
-            df[col] = df[col].apply(
-                lambda x: None if x in ("NULL", "null", "") else x
+        if "date" in col or "time" in col or col.endswith("_at"):
+            df[col] = pd.to_datetime(df[col], errors="coerce").dt.strftime(
+                "%Y-%m-%d %H:%M:%S"
             )
     return df
 
-# -----------------------
-# Main loader
-# -----------------------
+
 def load_csvs():
+    engine = create_engine(DB_URL)
+
     with engine.begin() as conn:
-        for file in os.listdir(CSV_DIR):
-            if not file.endswith(".csv"):
-                continue
+        for file, table in TABLE_CONFIG.items():
+            csv_path = os.path.join(CSV_DIR, file)
 
-            table_name = file.replace(".csv", "")
-            file_path = os.path.join(CSV_DIR, file)
+            if not os.path.exists(csv_path):
+                raise FileNotFoundError(f"❌ CSV not found: {csv_path}")
 
-            print(f"\n📥 Loading {file} → {table_name}")
+            print(f"📥 Loading {file} → {table}")
 
-            df = pd.read_csv(file_path)
-            df = normalize_columns(df)
-            df = normalize_values(df)
+            df = pd.read_csv(csv_path)
 
-            # Truncate table for deterministic reload
-            conn.execute(text(f"TRUNCATE TABLE {table_name}"))
+            # camelCase → snake_case
+            df.columns = [camel_to_snake(c) for c in df.columns]
 
-            # Bulk insert
+            # 🔥 FIX DATETIME FORMAT
+            df = normalize_datetimes(df)
+
+            # idempotent reload
+            conn.execute(text(f"DELETE FROM {table}"))
+
             df.to_sql(
-                table_name,
+                table,
                 con=conn,
                 if_exists="append",
                 index=False,
-                method="multi",
-                chunksize=500
+                method="multi"
             )
 
-            print(f"✅ Inserted {len(df)} rows into {table_name}")
+            print(f"✅ {table}: {len(df)} rows inserted")
 
-    print("\n🎉 All CSV data loaded successfully.")
+    print("\n🎉 All CSVs loaded successfully")
 
-# -----------------------
-# Entry point
-# -----------------------
+
 if __name__ == "__main__":
     load_csvs()
