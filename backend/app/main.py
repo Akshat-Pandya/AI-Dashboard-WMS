@@ -5,7 +5,7 @@ from sqlalchemy import text
 from app.core.schemas import IntentRequest, WidgetResponse
 from app.core.db_session import get_db
 
-from app.ai.intent_llm import extract_intent
+from app.ai.intent_llm import classify_intent
 from app.ai.fallback import keyword_fallback
 from app.tools.router import run_tool
 from app.ai.summary_llm import choose_widget_and_summary
@@ -14,7 +14,7 @@ app = FastAPI()
 
 @app.post("/chat", response_model=WidgetResponse)
 def chat(req: IntentRequest, db: Session = Depends(get_db)):
-    intent_result = extract_intent(req.query)
+    intent_result = classify_intent(req.query)
 
     if intent_result.intent.name == "UNKNOWN":
         intent_result.intent = keyword_fallback(req.query)

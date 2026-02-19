@@ -1,0 +1,162 @@
+🧠 Running Intent Classification Tests...
+
+01. Query: Show me warehouse overview and highlight any critical alerts
+    → Intent: warehouse_overview
+    → Confidence: 1.00
+    → Intent: warehouse_alerts
+    → Confidence: 1.00
+
+02. Query: What items are low on stock and which orders are affected?
+    → Intent: low_stock
+    → Confidence: 1.00
+    → Intent: order_status
+    → Confidence: 1.00
+
+03. Query: Give me KPI summary along with warehouse utilization
+    → Intent: kpi_summary
+    → Confidence: 0.90
+    → Intent: warehouse_overview
+    → Confidence: 0.70
+
+04. Query: Compare Zone A and Zone B and tell me if any tasks are blocked there
+    → Intent: zone_inventory_compare
+    → Confidence: 1.00
+    → Intent: blocked_tasks
+    → Confidence: 1.00
+
+05. Query: Show today's inbound activity and overdue shipments
+    → Intent: inbound_activity
+    → Confidence: 1.00
+    → Intent: overdue_asn
+    → Confidence: 1.00
+
+06. Query: Which orders are stuck in picking and who is assigned to them?
+    → Intent: orders_stuck
+    → Confidence: 1.00
+    → Intent: active_tasks
+    → Confidence: 0.80
+
+07. Query: Give me all active tasks and highlight blocked ones
+    → Intent: active_tasks
+    → Confidence: 1.00
+    → Intent: blocked_tasks
+    → Confidence: 1.00
+
+08. Query: Show alerts and operational issues in the warehouse
+    → Intent: warehouse_alerts
+    → Confidence: 1.00
+    → Intent: unknown
+    → Confidence: 0.20
+
+09. Query: Compare inventory levels across zones and show low stock items
+    → Intent: zone_inventory_compare
+    → Confidence: 1.00
+    → Intent: low_stock
+    → Confidence: 1.00
+
+10. Query: Show inbound activity and receiving performance for today
+    → Intent: inbound_activity
+    → Confidence: 1.00
+
+11. Query: Give me overview, KPIs, and any risks I should know
+    → Intent: warehouse_overview
+    → Confidence: 1.00
+    → Intent: warehouse_alerts
+    → Confidence: 1.00
+    → Intent: kpi_summary
+    → Confidence: 1.00
+
+12. Query: Show warehouse utilization and zones nearing capacity
+    → Intent: warehouse_overview
+    → Confidence: 0.80
+    → Intent: zone_inventory_compare
+    → Confidence: 0.60
+
+13. Query: Which orders are pending and what is the pick progress?
+    → Intent: orders_stuck
+    → Confidence: 1.00
+    → Intent: active_tasks
+    → Confidence: 0.80
+
+14. Query: Show stock levels and replenishment needs for motors category
+    → Intent: low_stock
+    → Confidence: 0.80
+    → Intent: inventory_lookup
+    → Confidence: 0.70
+
+15. Query: Display alerts along with affected zones
+    → Intent: warehouse_alerts
+    → Confidence: 1.00
+    → Intent: zone_inventory_compare
+    → Confidence: 0.80
+
+16. Query: What is happening in the warehouse and are there any issues?
+    → Intent: warehouse_overview
+    → Confidence: 1.00
+    → Intent: warehouse_alerts
+    → Confidence: 1.00
+
+17. Query: Show tasks in progress and any bottlenecks
+    → Intent: active_tasks
+    → Confidence: 1.00
+    → Intent: blocked_tasks
+    → Confidence: 1.00
+
+18. Query: Compare performance today vs yesterday and show KPIs
+    → Intent: kpi_summary
+    → Confidence: 1.00
+
+19. Query: Show operational summary with inbound and outbound activity
+    → Intent: warehouse_overview
+    → Confidence: 0.80
+    → Intent: inbound_activity
+    → Confidence: 0.60
+
+20. Query: Which zones have blocked tasks and low inventory?
+    → Intent: blocked_tasks
+    → Confidence: 1.00
+    → Intent: low_stock
+    → Confidence: 1.00
+
+21. Query: Give me all problems: alerts, overdue ASNs, and blocked tasks
+    → Intent: warehouse_alerts
+    → Confidence: 1.00
+    → Intent: overdue_asn
+    → Confidence: 1.00
+    → Intent: blocked_tasks
+    → Confidence: 1.00
+
+22. Query: Show inbound shipments and any delays
+    → Intent: inbound_activity
+    → Confidence: 1.00
+    → Intent: overdue_asn
+    → Confidence: 1.00
+
+23. Query: Which items are low and what replenishment tasks are pending?
+    → Intent: low_stock
+    → Confidence: 1.00
+    → Intent: blocked_tasks
+    → Confidence: 1.00
+
+24. Query: Show warehouse overview and current task workload
+    → Intent: warehouse_overview
+    → Confidence: 1.00
+    → Intent: active_tasks
+    → Confidence: 1.00
+
+25. Query: Give me utilization and compare with target KPIs
+    → Intent: kpi_summary
+    → Confidence: 1.00
+
+
+📊 Test Summary
+----------------------------------------
+warehouse_overview: 6
+low_stock: 3
+kpi_summary: 3
+zone_inventory_compare: 2
+inbound_activity: 3
+orders_stuck: 2
+active_tasks: 2
+warehouse_alerts: 3
+blocked_tasks: 1

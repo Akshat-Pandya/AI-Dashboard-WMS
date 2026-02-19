@@ -17,14 +17,21 @@ class Intent(str, Enum):
     KPI_SUMMARY = "kpi_summary"
     UNKNOWN = "unknown"
 
+class IntentScore(BaseModel):
+    intent: Intent
+    confidence: float
+
+
+class IntentResult(BaseModel):
+    intents: List[IntentScore]
 
 class IntentRequest(BaseModel):
     query: str
 
-class IntentResult(BaseModel):
-    intent: Intent
-    confidence: float = 0.0
-    filters: Optional[Dict[str, Any]] = None
+# class IntentResult(BaseModel):
+#     intent: Intent
+#     confidence: float = 0.0
+#     filters: Optional[Dict[str, Any]] = None
 
 class WidgetResponse(BaseModel):
     type: str
