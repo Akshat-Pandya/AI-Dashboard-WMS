@@ -1,7 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel
-from typing import Optional, Dict, List
-
+from typing import Dict, Optional, Any, List
 
 class Intent(str, Enum):
     WAREHOUSE_OVERVIEW = "warehouse_overview"
@@ -22,11 +21,10 @@ class Intent(str, Enum):
 class IntentRequest(BaseModel):
     query: str
 
-
 class IntentResult(BaseModel):
     intent: Intent
-    filters: Dict = {}
-
+    confidence: float = 0.0
+    filters: Optional[Dict[str, Any]] = None
 
 class WidgetResponse(BaseModel):
     type: str
