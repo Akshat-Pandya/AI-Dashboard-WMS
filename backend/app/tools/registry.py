@@ -1,21 +1,9 @@
 from app.core.schemas import Intent
 
-from app.tools.inventory.tools import (
-    get_low_stock_items,
-    get_inventory_by_zone
-)
-from app.tools.orders.tools import (
-    get_orders_by_status,
-    get_stuck_orders
-)
-from app.tools.tasks.tools import (
-    get_active_tasks,
-    get_blocked_tasks
-)
-from app.tools.inbound.tools import (
-    get_inbound_activity,
-    get_overdue_asns
-)
+from app.tools.inventory.tools import get_low_stock_items, get_inventory_by_zone
+from app.tools.orders.tools import get_orders_by_status, get_stuck_orders
+from app.tools.tasks.tools import get_active_tasks, get_blocked_tasks
+from app.tools.inbound.tools import get_inbound_activity, get_overdue_asns
 from app.tools.alerts.tools import get_alerts
 from app.tools.kpis.tools import get_kpi_summary
 from app.tools.overview.tools import get_warehouse_overview
