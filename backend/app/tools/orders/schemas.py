@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 
 class OrderRow(BaseModel):
@@ -12,11 +12,11 @@ class OrderRow(BaseModel):
     picked_lines: int
     packed_lines: int
     total_units: int
-    created_at: str | None = None
-    due_date: str | None = None
-    wave_id: str | None = None
-    carrier: str | None = None
-    staging_zone: str | None = None
+    created_at: Optional[str] = None
+    due_date: Optional[str] = None
+    wave_id: Optional[str] = None
+    carrier: Optional[str] = None
+    staging_zone: Optional[str] = None
 
 
 class OrdersByStatusResponse(BaseModel):
@@ -29,3 +29,14 @@ class StuckOrdersResponse(BaseModel):
     reason: str
     count: int
     orders: List[OrderRow]
+
+
+class OrdersByStatusParams(BaseModel):
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    limit: int = 25
+
+
+class StuckOrdersParams(BaseModel):
+    reason: Optional[str] = None
+    limit: int = 25

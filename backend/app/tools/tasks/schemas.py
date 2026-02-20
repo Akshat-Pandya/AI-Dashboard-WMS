@@ -7,18 +7,18 @@ class TaskRow(BaseModel):
     task_type: str
     status: str
     priority: str
-    assigned_to: str | None = None
-    assignee_name: str | None = None
-    zone: str | None = None
-    source_location: str | None = None
-    destination_location: str | None = None
-    reference_id: str | None = None
-    created_at: str | None = None
-    started_at: str | None = None
-    completed_at: str | None = None
-    estimated_minutes: int | None = None
+    assigned_to: Optional[str] = None
+    assignee_name: Optional[str] = None
+    zone: Optional[str] = None
+    source_location: Optional[str] = None
+    destination_location: Optional[str] = None
+    reference_id: Optional[str] = None
+    created_at: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    estimated_minutes: Optional[int] = None
     is_blocked: bool
-    block_reason: str | None = None
+    block_reason: Optional[str] = None
 
 
 class ActiveTasksResponse(BaseModel):
@@ -29,3 +29,11 @@ class ActiveTasksResponse(BaseModel):
 class BlockedTasksResponse(BaseModel):
     count: int
     tasks: List[TaskRow]
+
+
+class TaskParams(BaseModel):
+    status: Optional[str] = None
+    zone: Optional[str] = None
+    only_blocked: bool = False
+    assignee: Optional[str] = None
+    limit: int = 30

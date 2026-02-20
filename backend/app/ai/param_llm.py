@@ -1,35 +1,65 @@
 import requests
 import json
 import re
+from typing import Type
+from pydantic import BaseModel
+
+from app.core.schemas import Intent
+from app.ai.param_registry import PARAM_REGISTRY
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL_NAME = "qwen2.5:7b"
 
-SYSTEM_PROMPT = """
-Extract structured parameters from the warehouse query.
 
-Return JSON ONLY.
+def extract_params(query: str, intent: Intent) -> dict:
+    schema: Type[BaseModel] | None = PARAM_REGISTRY.get(intent)
 
-Fields:
-- zones: list of strings or null
-- category: string or null
-- date: string (YYYY-MM-DD) or null
-- status: string or null
+    if not schema:
+        return {}
+
+    schema_json = schema.model_json_schema()
+
+    prompt = f"""
+You extract structured parameters for a warehouse query.
+
+Intent: {intent.value}
+
+Allowed JSON schema:
+{json.dumps(schema_json, indent=2)}
+
+User query:
+{query}
+
+Rules:
+- Return ONLY valid JSON
+- Do not add explanations
+- Use null if value not found
 """
 
-def extract_params(query: str) -> dict:
     payload = {
         "model": MODEL_NAME,
-        "prompt": f"{SYSTEM_PROMPT}\nQuery: {query}",
+        "prompt": prompt,
         "stream": False,
         "options": {"temperature": 0}
     }
 
-    response = requests.post(OLLAMA_URL, json=payload, timeout=30)
-    raw = response.json().get("response", "")
-
     try:
-        return json.loads(raw)
+        response = requests.post(OLLAMA_URL, json=payload, timeout=30)
+        raw = response.json().get("response", "")
+
+        parsed = _extract_json(raw)
+
+        # Validate & coerce
+        return schema(**parsed).model_dump()
+
     except Exception:
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        # Safe fallback → default schema values
+        return schema().model_dump()
+
+
+def _extract_json(text: str):
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", text, re.DOTALL)
         return json.loads(match.group()) if match else {}

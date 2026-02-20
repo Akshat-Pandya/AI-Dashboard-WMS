@@ -4,17 +4,11 @@ import requests
 from typing import List
 
 from app.core.schemas import Intent, IntentResult, IntentScore
-from app.ai.thresholds import INTENT_CONFIDENCE_THRESHOLD
 
-# -----------------------------------------------------
-# Ollama configuration
-# -----------------------------------------------------
+
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL_NAME = "qwen2.5:7b"
 
-# -----------------------------------------------------
-# System prompt
-# -----------------------------------------------------
 SYSTEM_PROMPT = """
 You are an intent classification engine for a Warehouse Management System.
 
@@ -41,8 +35,7 @@ Rules:
 - Confidence must be between 0 and 1
 - If unsure, include "unknown"
 - NO explanations, NO extra text
-
-Return STRICT JSON only.
+- Return STRICT JSON only
 
 FORMAT:
 {
@@ -52,9 +45,7 @@ FORMAT:
 }
 """
 
-# -----------------------------------------------------
-# Public API
-# -----------------------------------------------------
+
 def classify_intent(query: str) -> IntentResult:
     payload = {
         "model": MODEL_NAME,
@@ -82,37 +73,18 @@ def classify_intent(query: str) -> IntentResult:
             except ValueError:
                 intent_enum = Intent.UNKNOWN
 
-            scores.append(
-                IntentScore(
-                    intent=intent_enum,
-                    confidence=confidence
-                )
-            )
+            scores.append(IntentScore(intent=intent_enum, confidence=confidence))
 
-        # 🔒 Safety: fallback if model returns garbage
         if not scores:
             scores = [IntentScore(intent=Intent.UNKNOWN, confidence=0.0)]
 
-        # 🔑 Filter weak intents
-        filtered = [
-            s for s in scores
-            if s.confidence >= INTENT_CONFIDENCE_THRESHOLD
-        ]
-
-        if not filtered:
-            filtered = [IntentScore(intent=Intent.UNKNOWN, confidence=0.0)]
-
-        return IntentResult(intents=filtered)
+        return IntentResult(intents=scores)
 
     except Exception as e:
         print("⚠️ Intent LLM error:", e)
-        return IntentResult(
-            intents=[IntentScore(intent=Intent.UNKNOWN, confidence=0.0)]
-        )
+        return IntentResult(intents=[IntentScore(intent=Intent.UNKNOWN, confidence=0.0)])
 
-# -----------------------------------------------------
-# JSON extraction helper
-# -----------------------------------------------------
+
 def _extract_json(text: str) -> dict:
     try:
         return json.loads(text)
@@ -124,21 +96,3 @@ def _extract_json(text: str) -> dict:
             except Exception:
                 pass
     return {}
-
-# -----------------------------------------------------
-# Local test (dev only)
-# -----------------------------------------------------
-if __name__ == "__main__":
-    tests = [
-        "Compare Zone A vs Zone B inventory",
-        "Show blocked tasks and overdue shipments",
-        "Give me KPI summary and warehouse overview",
-        "What items need replenishment?",
-        "Explain what WMS is"
-    ]
-
-    for q in tests:
-        result = classify_intent(q)
-        print("\nQuery:", q)
-        for i in result.intents:
-            print(f"  → {i.intent.value} ({i.confidence:.2f})")

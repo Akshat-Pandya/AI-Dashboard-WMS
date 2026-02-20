@@ -1,3 +1,4 @@
+# app/ai/intent_registry.py
 from app.core.schemas import Intent
 
 from app.tools.inventory.tools import get_low_stock_items, get_inventory_by_zone

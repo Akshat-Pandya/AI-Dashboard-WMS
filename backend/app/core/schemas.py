@@ -28,13 +28,13 @@ class IntentResult(BaseModel):
 class IntentRequest(BaseModel):
     query: str
 
-# class IntentResult(BaseModel):
-#     intent: Intent
-#     confidence: float = 0.0
-#     filters: Optional[Dict[str, Any]] = None
 
-class WidgetResponse(BaseModel):
-    type: str
-    widget: Optional[str] = None
-    data: Optional[Dict] = None
-    summary: Optional[List[str]] = None
+class TabResponse(BaseModel):
+    intent: str
+    widget: str
+    data: dict
+    summary: list[str]
+
+
+class ChatResponse(BaseModel):
+    tabs: list[TabResponse]

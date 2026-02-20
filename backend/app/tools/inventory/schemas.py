@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 
 class InventoryItem(BaseModel):
@@ -13,10 +13,10 @@ class InventoryItem(BaseModel):
     quantity_available: int
     reorder_point: int
     status: str
-    last_updated: str | None = None
-    unit_of_measure: str | None = None
-    weight: float | None = None
-    category: str | None = None
+    last_updated: Optional[str] = None
+    unit_of_measure: Optional[str] = None
+    weight: Optional[float] = None
+    category: Optional[str] = None
 
 
 class LowStockResponse(BaseModel):
@@ -37,3 +37,14 @@ class ZoneInventorySummary(BaseModel):
 class ZoneCompareResponse(BaseModel):
     zones: List[str]
     summary: List[ZoneInventorySummary]
+
+
+class LowStockParams(BaseModel):
+    threshold_mode: str = "reorder_point"
+    zone: Optional[str] = None
+    category: Optional[str] = None
+    limit: int = 20
+
+
+class ZoneCompareParams(BaseModel):
+    zones: List[str]
