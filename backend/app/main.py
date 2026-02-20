@@ -6,7 +6,7 @@ from app.core.schemas import IntentRequest, WidgetResponse
 from app.core.db_session import get_db
 
 from app.ai.intent_llm import classify_intent
-from app.ai.fallback import keyword_fallback
+from backend.app.ai.keyword_fallback import keyword_fallback
 from app.tools.router import run_tool
 from app.ai.summary_llm import choose_widget_and_summary
 
