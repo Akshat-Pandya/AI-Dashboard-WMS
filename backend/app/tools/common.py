@@ -1,21 +1,32 @@
-from typing import Any, Dict, List, Optional
+"""
+common.py — shared DB helpers used by all tool modules
+"""
+from typing import Any, Dict, List
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 
-def fetch_all(db: Session, sql: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-    rows = db.execute(text(sql), params or {}).mappings().all()
-    return [dict(r) for r in rows]
+def fetch_all(db: Session, sql: str, params: Dict[str, Any] = None) -> List[Dict]:
+    """Execute a raw SQL query and return rows as list of dicts."""
+    params = params or {}
+    result = db.execute(text(sql), params)
+    columns = result.keys()
+    return [dict(zip(columns, row)) for row in result.fetchall()]
 
 
-def fetch_one(db: Session, sql: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    row = db.execute(text(sql), params or {}).mappings().first()
-    return dict(row) if row else {}
+def fetch_one(db: Session, sql: str, params: Dict[str, Any] = None) -> Dict | None:
+    params = params or {}
+    result = db.execute(text(sql), params)
+    columns = result.keys()
+    row = result.fetchone()
+    return dict(zip(columns, row)) if row else None
 
 
-def to_bool(x: Any) -> bool:
-    if isinstance(x, bool):
-        return x
-    if x is None:
-        return False
-    return str(x).strip().lower() in ("1", "true", "yes", "y", "t")
+def to_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value != 0
+    if isinstance(value, str):
+        return value.lower() in ("1", "true", "yes")
+    return False

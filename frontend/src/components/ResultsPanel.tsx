@@ -1,25 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { R } from "@/tokens/brand";
 import { Skeleton } from "./Skeleton";
-import { IntentChips } from "./IntentChips";
-import { IntentTabs } from "./IntentTabs";
-import { AllIntentsPanel } from "./AllIntentsPanel";
-import { IntentTabContent } from "./IntentTabContent";
-import type { ChatResponse } from "@/types";
+import { WidgetRenderer } from "./WidgetRenderer";
+import type { QueryResponse } from "@/types";
 
 interface Props {
-  response: ChatResponse | null;
+  response: QueryResponse | null;
   loading: boolean;
 }
 
 export const ResultsPanel: React.FC<Props> = ({ response, loading }) => {
-  const [activeTab, setActiveTab] = useState(0);
-
-  // Reset to first tab on each new response
-  useEffect(() => {
-    setActiveTab(0);
-  }, [response]);
-
   // ── Empty State ─────────────────────────────────────────────────────────────
   if (!response && !loading) {
     return (
@@ -153,10 +143,6 @@ export const ResultsPanel: React.FC<Props> = ({ response, loading }) => {
     );
   }
 
-  const tabs = response
-    ? ["ALL INTENTS", ...response.candidates.map((c) => c.name)]
-    : [];
-
   return (
     <div
       style={{
@@ -218,24 +204,31 @@ export const ResultsPanel: React.FC<Props> = ({ response, loading }) => {
         </div>
       )}
 
-      {/* Intent chips */}
-      {response && (
-        <IntentChips
-          candidates={response.candidates}
-          selectedIntent={response.selectedIntent}
-        />
+      {/* Summary bar */}
+      {response?.summary && (
+        <div
+          style={{
+            background: R.white,
+            borderBottom: `1px solid ${R.border}`,
+            padding: "10px 24px",
+            flexShrink: 0,
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'Barlow', sans-serif",
+              fontSize: 13,
+              color: R.textPrimary,
+              margin: 0,
+              lineHeight: 1.6,
+            }}
+          >
+            {response.summary}
+          </p>
+        </div>
       )}
 
-      {/* Tabs */}
-      {response && (
-        <IntentTabs
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
-      )}
-
-      {/* Tab content */}
+      {/* Main content */}
       <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
         {loading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -244,13 +237,7 @@ export const ResultsPanel: React.FC<Props> = ({ response, loading }) => {
             <Skeleton height={170} />
           </div>
         ) : response ? (
-          activeTab === 0 ? (
-            <AllIntentsPanel response={response} />
-          ) : (
-            <IntentTabContent
-              result={response.resultsByIntent[activeTab - 1]}
-            />
-          )
+          <WidgetRenderer widgets={response.widgets} data={response.data} />
         ) : null}
       </div>
     </div>

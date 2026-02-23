@@ -1,61 +1,58 @@
 /**
  * API Service — WMS Generative UI Dashboard
  *
- * Currently uses mock data with a simulated latency.
- * To connect to a real backend, replace the `queryWMS` implementation:
- *   - Remove the setTimeout mock block
- *   - Uncomment the fetch() call
- *   - Point BASE_URL to your actual API endpoint
+ * To connect to the real backend:
+ *   1. Set VITE_API_BASE_URL in your .env file
+ *   2. Change `useMock` to `false` below
  */
 
-import type { ChatResponse } from "@/types";
-import { MOCK_RESPONSE } from "@/data/mockResponse";
+import type { QueryResponse } from "@/types";
+import { MOCK_QUERY_RESPONSE } from "@/data/mockResponse";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const MOCK_DELAY_MS = 900;
 
-// ─── Real API (swap in when backend is ready) ─────────────────────────────────
+// ─── Real API ─────────────────────────────────────────────────────────────────
 
-async function _fetchFromBackend(query: string): Promise<ChatResponse> {
-  const response = await fetch(`${BASE_URL}/query`, {
+async function _fetchFromBackend(
+  query: string,
+  params?: Record<string, unknown>
+): Promise<QueryResponse> {
+  const res = await fetch(`${BASE_URL}/query`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, params }),
   });
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`API error ${response.status}: ${err}`);
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`API error ${res.status}: ${detail}`);
   }
 
-  return response.json() as Promise<ChatResponse>;
+  return res.json() as Promise<QueryResponse>;
 }
 
-// ─── Mock API (used by default) ───────────────────────────────────────────────
+// ─── Mock API ─────────────────────────────────────────────────────────────────
 
-function _mockFetch(query: string): Promise<ChatResponse> {
+function _mockFetch(query: string): Promise<QueryResponse> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve({ ...MOCK_RESPONSE, query });
+      resolve({ ...MOCK_QUERY_RESPONSE, query });
     }, MOCK_DELAY_MS);
   });
 }
 
-// ─── Public API function ──────────────────────────────────────────────────────
+// ─── Public API ───────────────────────────────────────────────────────────────
 
-/**
- * Send a natural-language query to the WMS backend (or mock).
- *
- * To switch to the real backend:
- *   1. Set VITE_API_BASE_URL in your .env file
- *   2. Change `useMock` to `false` below
- */
-export async function queryWMS(query: string): Promise<ChatResponse> {
-  const useMock = false; // ← flip to false when real API is available
+export async function queryWMS(
+  query: string,
+  params?: Record<string, unknown>
+): Promise<QueryResponse> {
+  const useMock = false; // ← flip to true to use mock data
 
   if (useMock) {
     return _mockFetch(query);
   }
 
-  return _fetchFromBackend(query);
+  return _fetchFromBackend(query, params);
 }

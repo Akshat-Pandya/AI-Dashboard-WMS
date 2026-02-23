@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { ChatPanel } from "./components/ChatPanel";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { queryWMS } from "./services/api";
-import type { ChatResponse } from "./types";
+import type { QueryResponse } from "./types";
 
 const App: React.FC = () => {
-  const [response, setResponse] = useState<ChatResponse | null>(null);
+  const [response, setResponse] = useState<QueryResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
 
