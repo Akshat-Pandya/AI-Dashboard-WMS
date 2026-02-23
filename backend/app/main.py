@@ -6,39 +6,59 @@ from app.core.schemas import IntentRequest, WidgetResponse
 from app.core.db_session import get_db
 
 from app.ai.intent_llm import classify_intent
-from backend.app.ai.keyword_fallback import keyword_fallback
-from app.tools.router import run_tool
-from app.ai.summary_llm import choose_widget_and_summary
+from app.ai.keyword_fallback import keyword_fallback
 
-app = FastAPI()  
+# ✅ import router correctly
+from app.api.query import router as query_router
+from fastapi.middleware.cors import CORSMiddleware
 
+app = FastAPI(title="WMS Generative API")
+
+# ✅ Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ✅ Register API router
+app.include_router(query_router, prefix="/api", tags=["Query"])
+
+
+# =====================================================
+# MAIN CHAT ENDPOINT (existing)
+# =====================================================
 @app.post("/chat", response_model=WidgetResponse)
 def chat(req: IntentRequest, db: Session = Depends(get_db)):
+
     intent_result = classify_intent(req.query)
 
-    if intent_result.intent.name == "UNKNOWN":
-        intent_result.intent = keyword_fallback(req.query)
+    # 🔹 pick primary intent (highest confidence)
+    primary_intent = intent_result.intents[0].intent
 
-    if intent_result.intent.name == "UNKNOWN":
+    if primary_intent.name == "UNKNOWN":
+        fallback_intent = keyword_fallback(req.query)
+        primary_intent = fallback_intent
+
+    if primary_intent.name == "UNKNOWN":
         return {
             "type": "TEXT",
             "summary": ["I can answer warehouse data questions only."]
         }
 
-    data = run_tool(intent_result.intent, db)
-    presentation = choose_widget_and_summary(req.query, data)
-
     return {
-        "type": "WIDGET",
-        "widget": presentation["widget"],
-        "data": data,
-        "summary": presentation["summary"]
+        "type": "TEXT",
+        "summary": [
+            f"Intent detected: {primary_intent.name}. Tool execution not enabled yet."
+        ]
     }
 
 
-# ======================
+# =====================================================
 # DEBUG ENDPOINTS
-# ======================
+# =====================================================
 
 @app.get("/debug/inventory")
 def debug_inventory(db: Session = Depends(get_db)):

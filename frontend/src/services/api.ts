@@ -51,7 +51,7 @@ function _mockFetch(query: string): Promise<ChatResponse> {
  *   2. Change `useMock` to `false` below
  */
 export async function queryWMS(query: string): Promise<ChatResponse> {
-  const useMock = true; // ← flip to false when real API is available
+  const useMock = false; // ← flip to false when real API is available
 
   if (useMock) {
     return _mockFetch(query);

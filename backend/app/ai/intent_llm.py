@@ -56,6 +56,10 @@ FORMAT:
 # Public API
 # -----------------------------------------------------
 def classify_intent(query: str) -> IntentResult:
+    print("\n--------------------------------------------------")
+    print("🧠 Intent LLM called")
+    print("Query:", query)
+
     payload = {
         "model": MODEL_NAME,
         "prompt": f"{SYSTEM_PROMPT}\nUser Query: {query}",
@@ -82,18 +86,11 @@ def classify_intent(query: str) -> IntentResult:
             except ValueError:
                 intent_enum = Intent.UNKNOWN
 
-            scores.append(
-                IntentScore(
-                    intent=intent_enum,
-                    confidence=confidence
-                )
-            )
+            scores.append(IntentScore(intent=intent_enum, confidence=confidence))
 
-        # 🔒 Safety: fallback if model returns garbage
         if not scores:
             scores = [IntentScore(intent=Intent.UNKNOWN, confidence=0.0)]
 
-        # 🔑 Filter weak intents
         filtered = [
             s for s in scores
             if s.confidence >= INTENT_CONFIDENCE_THRESHOLD
@@ -102,6 +99,10 @@ def classify_intent(query: str) -> IntentResult:
         if not filtered:
             filtered = [IntentScore(intent=Intent.UNKNOWN, confidence=0.0)]
 
+        print("Detected intents:")
+        for s in filtered:
+            print(f"  → {s.intent.value} ({s.confidence:.2f})")
+
         return IntentResult(intents=filtered)
 
     except Exception as e:
@@ -109,7 +110,6 @@ def classify_intent(query: str) -> IntentResult:
         return IntentResult(
             intents=[IntentScore(intent=Intent.UNKNOWN, confidence=0.0)]
         )
-
 # -----------------------------------------------------
 # JSON extraction helper
 # -----------------------------------------------------
