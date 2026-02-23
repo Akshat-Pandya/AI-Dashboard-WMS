@@ -10,25 +10,62 @@ export type WidgetType =
   | "INBOUND_SUMMARY"
   | "OVERVIEW_PANEL";
 
-// ─── Widget Config (from backend orchestrator) ────────────────────────────────
-
 export interface WidgetConfig {
-  type: WidgetType | string; // string fallback for future types
+  type: WidgetType | string;
   title: string;
-  data_key: string;          // dot-path into QueryResponse.data, e.g. "alerts.alerts"
+  data_key: string;
   props?: Record<string, unknown>;
 }
 
-// ─── Top-level API Response ───────────────────────────────────────────────────
+// ─── Intent ───────────────────────────────────────────────────────────────────
 
-export interface QueryResponse {
-  query: string;
-  summary: string;
+export interface IntentScore {
+  intent: string;
+  confidence: number;
+}
+
+// ─── Per-intent tab result ────────────────────────────────────────────────────
+
+export interface IntentTabResult {
+  intent: string;
+  confidence: number;
+  toolsExecuted: string[];
+  summary: string[];
   widgets: WidgetConfig[];
   data: Record<string, unknown>;
 }
 
-// ─── KPI_CARDS payload ────────────────────────────────────────────────────────
+// ─── Single unified API response type ────────────────────────────────────────
+// This is what the backend returns AND what all UI components consume.
+// No more ChatResponse / QueryResponse split.
+
+export interface WMSResponse {
+  query: string;
+  summary: string;
+  intents: IntentScore[];
+  widgets: WidgetConfig[];
+  data: Record<string, unknown>;
+  // Derived fields — built client-side from intents (see buildTabResults)
+  candidates?: CandidateIntent[];
+  selectedIntent?: string;
+  resultsByIntent?: IntentTabResult[];
+}
+
+// ─── Candidate intent (for AllIntentsPanel display) ───────────────────────────
+
+export interface CandidateIntent {
+  name: string;
+  confidence: number;
+}
+
+// ─── Chat history ─────────────────────────────────────────────────────────────
+
+export interface ChatHistoryItem {
+  query: string;
+  timestamp: number;
+}
+
+// ─── Widget payload shapes ────────────────────────────────────────────────────
 
 export interface KPICard {
   label: string;
@@ -41,34 +78,26 @@ export interface KPICard {
 }
 
 export interface KPICardsData {
-  cards?: KPICard[]; // frontend shape
-  kpis?: KPICard[];  // backend shape (get_kpis returns { kpis: [] })
+  cards?: KPICard[];
+  kpis?: KPICard[];
 }
-
-// ─── TABLE payload ────────────────────────────────────────────────────────────
 
 export interface TableData {
   columns: string[];
   rows: (string | number)[][];
 }
 
-// ─── BAR_CHART / ZONE_COMPARE_CHART payload ───────────────────────────────────
-
 export interface BarChartData {
   bars: Record<string, unknown>[];
-  keys: string[];     // ← required
-  colors: string[];   // ← required
+  keys: string[];
+  colors: string[];
 }
-
-// ─── LINE_CHART payload ───────────────────────────────────────────────────────
 
 export interface LineChartData {
   points: Record<string, string | number>[];
   keys: string[];
   colors?: string[];
 }
-
-// ─── ALERT_LIST payload ───────────────────────────────────────────────────────
 
 export type AlertSeverity = "CRITICAL" | "HIGH" | "MEDIUM";
 
@@ -89,19 +118,6 @@ export interface AlertListData {
   alerts: Alert[];
 }
 
-// ─── Inventory types ──────────────────────────────────────────────────────────
-
-export interface InventoryItem {
-  sku: string;
-  name: string;
-  zone: string;
-  quantity: number;
-  reorder_point: number;
-  unit: string;
-}
-
-// ─── Zone comparison ──────────────────────────────────────────────────────────
-
 export interface ZoneRow {
   zone: string;
   total_skus: number;
@@ -114,8 +130,6 @@ export interface ZoneCompareData {
   zones: ZoneRow[];
 }
 
-// ─── Union widget payload ─────────────────────────────────────────────────────
-
 export type WidgetData =
   | KPICardsData
   | TableData
@@ -124,18 +138,7 @@ export type WidgetData =
   | AlertListData
   | ZoneCompareData;
 
-// ─── Chat History ─────────────────────────────────────────────────────────────
-
-export interface ChatHistoryItem {
-  query: string;
-  timestamp: number;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LEGACY — kept for existing UI components (IntentTabs, AllIntentsPanel, etc.)
-// These types reflect the old mock-based response shape.
-// Once those components are migrated to QueryResponse, these can be removed.
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Legacy WidgetSpec (old mock-based components) ────────────────────────────
 
 export interface WidgetSpec {
   type: WidgetType;
@@ -143,23 +146,10 @@ export interface WidgetSpec {
   data: WidgetData;
 }
 
-export interface CandidateIntent {
-  name: string;
-  confidence: number;
-}
+// ─── Deprecated aliases — remove once all components use WMSResponse ──────────
 
-export interface IntentTabResult {
-  intent: string;
-  confidence: number;
-  toolsExecuted: string[];
-  summary: string[];
-  widgets: WidgetSpec[];
-}
+/** @deprecated Use WMSResponse */
+export type QueryResponse = WMSResponse;
 
-/** @deprecated Use QueryResponse instead. Kept for IntentTabs / AllIntentsPanel compatibility. */
-export interface ChatResponse {
-  query: string;
-  candidates: CandidateIntent[];
-  selectedIntent: string;
-  resultsByIntent: IntentTabResult[];
-}
+/** @deprecated Use WMSResponse */
+export type ChatResponse = WMSResponse;

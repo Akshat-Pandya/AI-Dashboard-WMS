@@ -257,7 +257,7 @@ class QueryResponse(BaseModel):
     summary: str
     widgets: List[WidgetConfig]
     data: Dict[str, Any]
-
+    intents: List[Dict[str, Any]] = []
 
 # ─────────────────────────────────────────────
 # Legacy (kept for compatibility)

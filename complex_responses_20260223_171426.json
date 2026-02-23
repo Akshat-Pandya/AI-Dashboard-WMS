@@ -1,0 +1,16 @@
+[
+  {
+    "query": "How is the weather today ?",
+    "summary": "I couldn't understand your query. Please try rephrasing.",
+    "widgets": [],
+    "data": {},
+    "intents": []
+  },
+  {
+    "query": "What is your name?",
+    "summary": "I couldn't understand your query. Please try rephrasing.",
+    "widgets": [],
+    "data": {},
+    "intents": []
+  }
+]

@@ -1,0 +1,399 @@
+[
+  {
+    "query": "How is the weather today ?",
+    "summary": "I couldn't understand your query. Please try rephrasing.",
+    "widgets": [],
+    "data": {},
+    "intents": []
+  },
+  {
+    "query": "What is your name?",
+    "summary": "I couldn't understand your query. Please try rephrasing.",
+    "widgets": [],
+    "data": {},
+    "intents": []
+  },
+  {
+    "query": "which orders are stuck and any critical alerts?",
+    "summary": "There are 5 critical and warning alerts, with Zone C temperature rising being the most severe. There are 6 stuck orders that need attention.",
+    "widgets": [
+      {
+        "type": "ALERT_LIST",
+        "title": "Critical & Warning Alerts",
+        "data_key": "alerts.alerts",
+        "props": {
+          "highlight": "severity"
+        }
+      },
+      {
+        "type": "KPI_CARDS",
+        "title": "Stuck Orders Summary",
+        "data_key": "stuck_orders.orders",
+        "props": {}
+      }
+    ],
+    "data": {
+      "alerts": {
+        "count": 5,
+        "alerts": [
+          {
+            "id": "ALT001",
+            "severity": "critical",
+            "title": "Zone C Temperature Rising",
+            "message": "Cold storage Zone C temperature at -15°C, threshold is -18°C. Compressor check required.",
+            "category": "environmental",
+            "timestamp": "2026-02-17T10:30:00",
+            "acknowledged": false,
+            "zone": "Zone C"
+          },
+          {
+            "id": "ALT003",
+            "severity": "warning",
+            "title": "Overdue Inbound Shipment",
+            "message": "ASN-2026-1198 from Bosch Automation Parts is 20 hours overdue.",
+            "category": "inbound",
+            "timestamp": "2026-02-17T10:00:00",
+            "acknowledged": false,
+            "zone": null
+          },
+          {
+            "id": "ALT002",
+            "severity": "error",
+            "title": "4 Tasks Blocked in Zone B",
+            "message": "Put-away tasks blocked due to occupied destination locations. Replenishment cycle needed.",
+            "category": "operations",
+            "timestamp": "2026-02-17T09:55:00",
+            "acknowledged": false,
+            "zone": "Zone B"
+          },
+          {
+            "id": "ALT004",
+            "severity": "warning",
+            "title": "6 SKUs Below Reorder Point",
+            "message": "Bearings, Safety equipment, and Pneumatics categories have critically low stock levels.",
+            "category": "inventory",
+            "timestamp": "2026-02-17T08:00:00",
+            "acknowledged": true,
+            "zone": null
+          },
+          {
+            "id": "ALT005",
+            "severity": "info",
+            "title": "Shift Change at 14:00",
+            "message": "Afternoon shift starts at 14:00. 12 operators scheduled.",
+            "category": "staffing",
+            "timestamp": "2026-02-17T07:00:00",
+            "acknowledged": true,
+            "zone": null
+          }
+        ]
+      },
+      "stuck_orders": {
+        "reason": "pending/picking with incomplete pick/pack progress",
+        "count": 6,
+        "orders": [
+          {
+            "id": "ORD002",
+            "order_number": "WO-2026-0452",
+            "status": "pending",
+            "priority": "urgent",
+            "customer_name": "RoboSys India Pvt Ltd",
+            "total_lines": 3,
+            "picked_lines": 0,
+            "packed_lines": 0,
+            "total_units": 12,
+            "created_at": "2026-02-17T07:30:00",
+            "due_date": "2026-02-17T14:00:00",
+            "wave_id": null,
+            "carrier": "BlueDart",
+            "staging_zone": "Zone D"
+          },
+          {
+            "id": "ORD001",
+            "order_number": "WO-2026-0451",
+            "status": "picking",
+            "priority": "high",
+            "customer_name": "AutoTech Manufacturing",
+            "total_lines": 5,
+            "picked_lines": 2,
+            "packed_lines": 0,
+            "total_units": 48,
+            "created_at": "2026-02-17T06:00:00",
+            "due_date": "2026-02-17T18:00:00",
+            "wave_id": "WAVE-042",
+            "carrier": "DHL Express",
+            "staging_zone": "Zone D"
+          },
+          {
+            "id": "ORD007",
+            "order_number": "WO-2026-0457",
+            "status": "picking",
+            "priority": "urgent",
+            "customer_name": "FutureTech Automation",
+            "total_lines": 5,
+            "picked_lines": 1,
+            "packed_lines": 0,
+            "total_units": 41,
+            "created_at": "2026-02-17T10:05:00",
+            "due_date": "2026-02-17T20:00:00",
+            "wave_id": "WAVE-044",
+            "carrier": "BlueDart",
+            "staging_zone": "Zone D"
+          },
+          {
+            "id": "ORD003",
+            "order_number": "WO-2026-0453",
+            "status": "picking",
+            "priority": "medium",
+            "customer_name": "Precision Auto Components",
+            "total_lines": 6,
+            "picked_lines": 3,
+            "packed_lines": 1,
+            "total_units": 72,
+            "created_at": "2026-02-17T08:10:00",
+            "due_date": "2026-02-18T12:00:00",
+            "wave_id": "WAVE-043",
+            "carrier": "Delhivery",
+            "staging_zone": "Zone D"
+          },
+          {
+            "id": "ORD009",
+            "order_number": "WO-2026-0459",
+            "status": "picking",
+            "priority": "high",
+            "customer_name": "Prime Robotics Pvt Ltd",
+            "total_lines": 6,
+            "picked_lines": 2,
+            "packed_lines": 0,
+            "total_units": 63,
+            "created_at": "2026-02-17T11:00:00",
+            "due_date": "2026-02-18T13:00:00",
+            "wave_id": "WAVE-045",
+            "carrier": "DHL Express",
+            "staging_zone": "Zone D"
+          },
+          {
+            "id": "ORD006",
+            "order_number": "WO-2026-0456",
+            "status": "pending",
+            "priority": "low",
+            "customer_name": "Metro Engineering Works",
+            "total_lines": 2,
+            "picked_lines": 0,
+            "packed_lines": 0,
+            "total_units": 8,
+            "created_at": "2026-02-17T09:40:00",
+            "due_date": "2026-02-19T15:00:00",
+            "wave_id": null,
+            "carrier": "Ecom Express",
+            "staging_zone": "Zone D"
+          }
+        ]
+      }
+    },
+    "intents": [
+      {
+        "intent": "orders_stuck",
+        "confidence": 1.0
+      },
+      {
+        "intent": "warehouse_alerts",
+        "confidence": 1.0
+      }
+    ]
+  },
+  {
+    "query": "show top 5 inventory KPIs",
+    "summary": "Today, the warehouse has exceeded its target for orders fulfilled and improved pick accuracy.",
+    "widgets": [
+      {
+        "type": "KPI_CARDS",
+        "title": "Top KPIs",
+        "data_key": "kpis.kpis",
+        "props": {}
+      }
+    ],
+    "data": {
+      "kpis": {
+        "count": 6,
+        "kpis": [
+          {
+            "id": "KPI001",
+            "label": "Orders Fulfilled Today",
+            "value": "156.00",
+            "previous_value": "142.00",
+            "unit": "orders",
+            "trend": "up",
+            "change_percent": "9.90",
+            "category": "throughput",
+            "target": "150.00",
+            "is_on_target": true
+          },
+          {
+            "id": "KPI002",
+            "label": "Pick Accuracy",
+            "value": "99.20",
+            "previous_value": "98.80",
+            "unit": "%",
+            "trend": "up",
+            "change_percent": "0.40",
+            "category": "accuracy",
+            "target": "99.50",
+            "is_on_target": false
+          },
+          {
+            "id": "KPI003",
+            "label": "Avg Fulfillment Time",
+            "value": "42.00",
+            "previous_value": "48.00",
+            "unit": "min",
+            "trend": "down",
+            "change_percent": "-12.50",
+            "category": "efficiency",
+            "target": "45.00",
+            "is_on_target": true
+          },
+          {
+            "id": "KPI004",
+            "label": "Warehouse Utilization",
+            "value": "78.50",
+            "previous_value": "75.20",
+            "unit": "%",
+            "trend": "up",
+            "change_percent": "4.40",
+            "category": "utilization",
+            "target": "85.00",
+            "is_on_target": false
+          },
+          {
+            "id": "KPI005",
+            "label": "Blocked Tasks",
+            "value": "4.00",
+            "previous_value": "2.00",
+            "unit": "tasks",
+            "trend": "up",
+            "change_percent": "100.00",
+            "category": "efficiency",
+            "target": "0.00",
+            "is_on_target": false
+          },
+          {
+            "id": "KPI006",
+            "label": "Inbound Received Today",
+            "value": "1240.00",
+            "previous_value": "980.00",
+            "unit": "units",
+            "trend": "up",
+            "change_percent": "26.50",
+            "category": "throughput",
+            "target": "1000.00",
+            "is_on_target": true
+          }
+        ]
+      }
+    },
+    "intents": [
+      {
+        "intent": "kpi_summary",
+        "confidence": 1.0
+      }
+    ]
+  },
+  {
+    "query": "warehouse performance metrics for today",
+    "summary": "Today's KPIs show an increase in orders fulfilled and a slight improvement in pick accuracy.",
+    "widgets": [
+      {
+        "type": "KPI_CARDS",
+        "title": "Key Performance Indicators",
+        "data_key": "kpis.kpis",
+        "props": {}
+      }
+    ],
+    "data": {
+      "kpis": {
+        "count": 6,
+        "kpis": [
+          {
+            "id": "KPI001",
+            "label": "Orders Fulfilled Today",
+            "value": "156.00",
+            "previous_value": "142.00",
+            "unit": "orders",
+            "trend": "up",
+            "change_percent": "9.90",
+            "category": "throughput",
+            "target": "150.00",
+            "is_on_target": true
+          },
+          {
+            "id": "KPI002",
+            "label": "Pick Accuracy",
+            "value": "99.20",
+            "previous_value": "98.80",
+            "unit": "%",
+            "trend": "up",
+            "change_percent": "0.40",
+            "category": "accuracy",
+            "target": "99.50",
+            "is_on_target": false
+          },
+          {
+            "id": "KPI003",
+            "label": "Avg Fulfillment Time",
+            "value": "42.00",
+            "previous_value": "48.00",
+            "unit": "min",
+            "trend": "down",
+            "change_percent": "-12.50",
+            "category": "efficiency",
+            "target": "45.00",
+            "is_on_target": true
+          },
+          {
+            "id": "KPI004",
+            "label": "Warehouse Utilization",
+            "value": "78.50",
+            "previous_value": "75.20",
+            "unit": "%",
+            "trend": "up",
+            "change_percent": "4.40",
+            "category": "utilization",
+            "target": "85.00",
+            "is_on_target": false
+          },
+          {
+            "id": "KPI005",
+            "label": "Blocked Tasks",
+            "value": "4.00",
+            "previous_value": "2.00",
+            "unit": "tasks",
+            "trend": "up",
+            "change_percent": "100.00",
+            "category": "efficiency",
+            "target": "0.00",
+            "is_on_target": false
+          },
+          {
+            "id": "KPI006",
+            "label": "Inbound Received Today",
+            "value": "1240.00",
+            "previous_value": "980.00",
+            "unit": "units",
+            "trend": "up",
+            "change_percent": "26.50",
+            "category": "throughput",
+            "target": "1000.00",
+            "is_on_target": true
+          }
+        ]
+      }
+    },
+    "intents": [
+      {
+        "intent": "kpi_summary",
+        "confidence": 1.0
+      }
+    ]
+  }
+]

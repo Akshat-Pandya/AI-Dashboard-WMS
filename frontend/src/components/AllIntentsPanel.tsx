@@ -1,10 +1,10 @@
 import React from "react";
 import { R } from "@/tokens/brand";
 import { SectionHeader } from "./SectionHeader";
-import type { ChatResponse } from "@/types";
+import type { WMSResponse } from "@/types";
 
 interface Props {
-  response: ChatResponse;
+  response: WMSResponse;
 }
 
 export const AllIntentsPanel: React.FC<Props> = ({ response }) => (
@@ -12,8 +12,8 @@ export const AllIntentsPanel: React.FC<Props> = ({ response }) => (
     <SectionHeader title="Candidate Intents Detected" />
 
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {response.candidates.map((c, i) => {
-        const result = response.resultsByIntent.find((r) => r.intent === c.name);
+      {(response.candidates ?? []).map((c, i) => {
+        const result = (response.resultsByIntent ?? []).find((r) => r.intent === c.name);
         const isSelected = c.name === response.selectedIntent;
         const pct = Math.round(c.confidence * 100);
         const confidenceColor = pct > 70 ? R.green : pct > 40 ? R.amber : R.red;
@@ -32,7 +32,6 @@ export const AllIntentsPanel: React.FC<Props> = ({ response }) => (
                 : "0 1px 4px rgba(0,0,0,0.04)",
             }}
           >
-            {/* Header row */}
             <div
               style={{
                 display: "flex",
@@ -106,7 +105,7 @@ export const AllIntentsPanel: React.FC<Props> = ({ response }) => (
             </div>
 
             {/* Tools */}
-            {result && (
+            {result && result.toolsExecuted.length > 0 && (
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {result.toolsExecuted.map((t, j) => (
                   <span

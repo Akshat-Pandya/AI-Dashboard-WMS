@@ -1,23 +1,24 @@
 /**
- * API Service — WMS Generative UI Dashboard
+ * api.ts — WMS API Service
  *
- * To connect to the real backend:
- *   1. Set VITE_API_BASE_URL in your .env file
- *   2. Change `useMock` to `false` below
+ * Single function queryWMS() returns WMSResponse.
+ * Call buildTabResults() after to populate candidates/resultsByIntent for the UI.
  */
 
-import type { QueryResponse } from "@/types";
-import { MOCK_QUERY_RESPONSE } from "@/data/mockResponse";
+import type { WMSResponse } from "@/types";
+import { buildTabResults } from "./buildTabResults";
+import { MOCK_RESPONSE } from "@/data/mockResponse";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const MOCK_DELAY_MS = 900;
+const USE_MOCK = false; // ← flip to true to use mock data
 
 // ─── Real API ─────────────────────────────────────────────────────────────────
 
 async function _fetchFromBackend(
   query: string,
   params?: Record<string, unknown>
-): Promise<QueryResponse> {
+): Promise<WMSResponse> {
   const res = await fetch(`${BASE_URL}/query`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -29,30 +30,29 @@ async function _fetchFromBackend(
     throw new Error(`API error ${res.status}: ${detail}`);
   }
 
-  return res.json() as Promise<QueryResponse>;
+  return res.json() as Promise<WMSResponse>;
 }
 
 // ─── Mock API ─────────────────────────────────────────────────────────────────
 
-function _mockFetch(query: string): Promise<QueryResponse> {
+function _mockFetch(query: string): Promise<WMSResponse> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve({ ...MOCK_QUERY_RESPONSE, query });
+      resolve({ ...MOCK_RESPONSE, query });
     }, MOCK_DELAY_MS);
   });
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+// ─── Public ───────────────────────────────────────────────────────────────────
 
 export async function queryWMS(
   query: string,
   params?: Record<string, unknown>
-): Promise<QueryResponse> {
-  const useMock = false; // ← flip to true to use mock data
+): Promise<WMSResponse> {
+  const raw = USE_MOCK
+    ? await _mockFetch(query)
+    : await _fetchFromBackend(query, params);
 
-  if (useMock) {
-    return _mockFetch(query);
-  }
-
-  return _fetchFromBackend(query, params);
+  // Derive candidates / selectedIntent / resultsByIntent for UI tabs
+  return buildTabResults(raw);
 }

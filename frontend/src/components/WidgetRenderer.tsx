@@ -21,8 +21,12 @@ const WIDGET_MAP: Record<string, React.FC<{ data: any; props?: any }>> = {
   INBOUND_SUMMARY:    TableWidget,
 };
 
-// ─── Dot-path resolver ────────────────────────────────────────────────────────
-// Resolves "low_stock.items" → data["low_stock"]["items"]
+const CHART_COLORS = [
+  "#E8001C", "#3B82F6", "#10B981", "#F59E0B",
+  "#8B5CF6", "#EC4899", "#06B6D4", "#84CC16",
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function resolvePath(obj: Record<string, unknown>, path: string): unknown {
   return path.split(".").reduce<unknown>((acc, key) => {
@@ -33,16 +37,10 @@ function resolvePath(obj: Record<string, unknown>, path: string): unknown {
   }, obj);
 }
 
-// ─── Array → TableData transformer ───────────────────────────────────────────
-// TableWidget expects { columns: string[], rows: any[][] }
-// Backend tools return arrays of objects like { sku, name, zone, quantity, ... }
-// This auto-converts so you never have to manually shape data for TABLE widgets.
-
 function toTableData(raw: unknown): { columns: string[]; rows: unknown[][] } | null {
   if (!Array.isArray(raw) || raw.length === 0) return null;
   const first = raw[0];
   if (typeof first !== "object" || first === null) return null;
-
   const columns = Object.keys(first);
   const rows = raw.map((item) =>
     columns.map((col) => (item as Record<string, unknown>)[col] ?? "—")
@@ -50,27 +48,69 @@ function toTableData(raw: unknown): { columns: string[]; rows: unknown[][] } | n
   return { columns, rows };
 }
 
-// ─── Data adapter per widget type ────────────────────────────────────────────
-// Shapes resolved data into what each component actually expects.
+function isNumericValue(v: unknown): boolean {
+  if (typeof v === "number") return true;
+  if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) return true;
+  return false;
+}
 
-function adaptData(type: string, resolved: unknown): unknown {
+/**
+ * Converts array of objects → BarChartData.
+ * Handles numeric values stored as strings (common from MySQL).
+ * e.g. [{ zone: "A", total_units: "4800", low_stock_count: "6" }]
+ */
+function toBarChartData(
+  raw: unknown[],
+  propsKeys?: string[]
+): { bars: unknown[]; keys: string[]; colors: string[] } | null {
+  if (raw.length === 0) return null;
+  const first = raw[0];
+  if (typeof first !== "object" || first === null) return null;
+
+  const allKeys = Object.keys(first as object);
+
+  // Detect numeric or numeric-string keys, skip obvious ID/name/string fields
+  const numericKeys = allKeys.filter((k) => {
+    const val = (first as Record<string, unknown>)[k];
+    return isNumericValue(val);
+  });
+
+  const keys = propsKeys ?? numericKeys;
+
+  if (keys.length === 0) {
+    // Fallback: use all non-first keys
+    const fallbackKeys = allKeys.slice(1);
+    const colors = fallbackKeys.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+    return { bars: raw, keys: fallbackKeys, colors };
+  }
+
+  // Coerce string numbers to actual numbers in the data
+  const bars = raw.map((item) => {
+    const obj = { ...(item as Record<string, unknown>) };
+    keys.forEach((k) => {
+      if (typeof obj[k] === "string") obj[k] = Number(obj[k]);
+    });
+    return obj;
+  });
+
+  const colors = keys.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+  return { bars, keys, colors };
+}
+
+// ─── Data adapter ─────────────────────────────────────────────────────────────
+
+function adaptData(type: string, resolved: unknown, props?: Record<string, unknown>): unknown {
   switch (type) {
+
     case "TABLE":
     case "INBOUND_SUMMARY": {
-      // Already shaped correctly (has .columns + .rows)
       if (
         resolved &&
         typeof resolved === "object" &&
         "columns" in (resolved as object) &&
         "rows" in (resolved as object)
-      ) {
-        return resolved;
-      }
-      // It's an array of objects — auto-convert
-      if (Array.isArray(resolved)) {
-        return toTableData(resolved) ?? resolved;
-      }
-      // It's an object with a nested array (e.g. { items: [...] }) — unwrap first array found
+      ) return resolved;
+      if (Array.isArray(resolved)) return toTableData(resolved) ?? resolved;
       if (resolved && typeof resolved === "object") {
         const obj = resolved as Record<string, unknown>;
         const arrayKey = Object.keys(obj).find((k) => Array.isArray(obj[k]));
@@ -80,19 +120,98 @@ function adaptData(type: string, resolved: unknown): unknown {
     }
 
     case "ALERT_LIST": {
-      // Expects { alerts: AlertRow[] }
       if (Array.isArray(resolved)) return { alerts: resolved };
       return resolved;
     }
 
     case "BAR_CHART":
     case "ZONE_COMPARE_CHART": {
-      // Pass through — BarChartWidget handles raw arrays or shaped objects
+      // Already properly shaped
+      if (
+        resolved &&
+        typeof resolved === "object" &&
+        !Array.isArray(resolved) &&
+        "bars" in (resolved as object) &&
+        "keys" in (resolved as object) &&
+        Array.isArray((resolved as any).keys)
+      ) return resolved;
+
+      const propsKeys = Array.isArray(props?.keys) ? (props!.keys as string[]) : undefined;
+
+      if (Array.isArray(resolved)) {
+        return toBarChartData(resolved, propsKeys) ?? resolved;
+      }
+      if (resolved && typeof resolved === "object") {
+        const obj = resolved as Record<string, unknown>;
+        const arrayKey = Object.keys(obj).find((k) => Array.isArray(obj[k]));
+        if (arrayKey) return toBarChartData(obj[arrayKey] as unknown[], propsKeys) ?? resolved;
+      }
       return resolved;
     }
 
+    case "LINE_CHART": {
+      if (
+        resolved &&
+        typeof resolved === "object" &&
+        !Array.isArray(resolved) &&
+        "points" in (resolved as object) &&
+        "keys" in (resolved as object) &&
+        Array.isArray((resolved as any).keys)
+      ) return resolved;
+
+      const propsKeys = Array.isArray(props?.keys) ? (props!.keys as string[]) : undefined;
+
+      const toLineData = (arr: unknown[]) => {
+        if (arr.length === 0) return null;
+        const first = arr[0] as Record<string, unknown>;
+        const allKeys = Object.keys(first);
+        const numericKeys = propsKeys ?? allKeys.filter((k) => {
+          const v = first[k];
+          if (typeof v === "boolean") return false;
+          if (typeof v === "number") return true;
+          if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) return true;
+          return false;
+        });
+        if (numericKeys.length === 0) return null;
+        const dateKey = allKeys.find(
+          (k) => typeof first[k] === "string" && /date|time|timestamp|created|updated/i.test(k)
+        );
+        let points: unknown[] = dateKey
+          ? [...arr].sort((a, b) => {
+              const av = (a as Record<string, unknown>)[dateKey] as string;
+              const bv = (b as Record<string, unknown>)[dateKey] as string;
+              return av < bv ? -1 : av > bv ? 1 : 0;
+            })
+          : arr;
+        points = points.map((item) => {
+          const obj = { ...(item as Record<string, unknown>) };
+          numericKeys.forEach((k) => { if (typeof obj[k] === "string") obj[k] = Number(obj[k]); });
+          return obj;
+        });
+        return {
+          points,
+          keys: numericKeys,
+          colors: numericKeys.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+        };
+      };
+
+      if (Array.isArray(resolved)) {
+        const r = toLineData(resolved);
+        if (r) return r;
+      }
+      if (resolved && typeof resolved === "object") {
+        const obj = resolved as Record<string, unknown>;
+        const arrayKey = Object.keys(obj).find((k) => Array.isArray(obj[k]));
+        if (arrayKey) {
+          const r = toLineData(obj[arrayKey] as unknown[]);
+          if (r) return r;
+        }
+      }
+      return { points: [], keys: [], colors: [] };
+    }
+
     case "KPI_CARDS": {
-      // Expects { kpis: KPICard[] }
+      if (resolved && typeof resolved === "object" && !Array.isArray(resolved)) return resolved;
       if (Array.isArray(resolved)) return { kpis: resolved };
       return resolved;
     }
@@ -127,22 +246,20 @@ export const WidgetRenderer: React.FC<Props> = ({ widgets, data }) => {
           return null;
         }
 
-        const adapted = adaptData(widget.type, resolved);
+        const adapted = adaptData(widget.type, resolved, widget.props);
 
         return (
           <div key={idx}>
             {widget.title && (
-              <h3
-                style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: "#6B7280",
-                  margin: "0 0 10px 0",
-                }}
-              >
+              <h3 style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 14,
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "#6B7280",
+                margin: "0 0 10px 0",
+              }}>
                 {widget.title}
               </h3>
             )}

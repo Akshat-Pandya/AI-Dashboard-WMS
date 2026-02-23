@@ -2,7 +2,7 @@ import React from "react";
 import { R } from "@/tokens/brand";
 import { Skeleton } from "./Skeleton";
 import { DebugAccordion } from "./DebugAccordion";
-import { WidgetRenderer } from "./widgets/WidgetRenderer";
+import { WidgetRenderer } from "./WidgetRenderer";
 import type { IntentTabResult } from "@/types";
 
 interface Props {
@@ -49,57 +49,55 @@ export const IntentTabContent: React.FC<Props> = ({ result, loading = false }) =
       </div>
 
       {/* Summary bullets */}
-      <div
-        style={{
-          background: R.greenLight,
-          borderLeft: `4px solid ${R.green}`,
-          border: `1px solid #A7F3D0`,
-          borderRadius: 3,
-          padding: "14px 18px",
-          marginBottom: 20,
-        }}
-      >
-        {result.summary.map((s, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              gap: 10,
-              marginBottom: i < result.summary.length - 1 ? 8 : 0,
-            }}
-          >
-            <span
+      {result.summary.length > 0 && (
+        <div
+          style={{
+            background: R.greenLight,
+            borderLeft: `4px solid ${R.green}`,
+            border: `1px solid #A7F3D0`,
+            borderRadius: 3,
+            padding: "14px 18px",
+            marginBottom: 20,
+          }}
+        >
+          {result.summary.map((s, i) => (
+            <div
+              key={i}
               style={{
-                color: R.green,
-                fontWeight: 800,
-                fontSize: 16,
-                lineHeight: 1.2,
-                flexShrink: 0,
+                display: "flex",
+                gap: 10,
+                marginBottom: i < result.summary.length - 1 ? 8 : 0,
               }}
             >
-              ·
-            </span>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 13,
-                color: "#065F46",
-                fontFamily: "'Barlow', sans-serif",
-                lineHeight: 1.5,
-              }}
-            >
-              {s}
-            </p>
-          </div>
-        ))}
-      </div>
+              <span
+                style={{
+                  color: R.green,
+                  fontWeight: 800,
+                  fontSize: 16,
+                  lineHeight: 1.2,
+                  flexShrink: 0,
+                }}
+              >
+                ·
+              </span>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  color: "#065F46",
+                  fontFamily: "'Barlow', sans-serif",
+                  lineHeight: 1.5,
+                }}
+              >
+                {s}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Widgets */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {result.widgets.map((w, i) => (
-          <WidgetRenderer key={i} widget={w} />
-        ))}
-      </div>
+      {/* Widgets — outer WidgetRenderer takes full widgets + data */}
+      <WidgetRenderer widgets={result.widgets} data={result.data} />
 
       <DebugAccordion data={result} />
     </div>
