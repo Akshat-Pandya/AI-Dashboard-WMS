@@ -1,22 +1,7 @@
 """
 param_llm.py
 Extracts structured query parameters from the user's natural language query.
-
 Runs AFTER intent classification, BEFORE tool execution.
-The extracted params are passed to every tool so they can filter their SQL.
-
-Examples:
-  "show inventory of zone A"
-    → { "zone": "A", "zones": ["A"] }
-
-  "compare inventory of zone A and zone B"
-    → { "zones": ["A", "B"] }
-
-  "show last 10 stuck orders"
-    → { "limit": 10 }
-
-  "show critical alerts only"
-    → { "severity": "critical" }
 """
 import json
 import re
@@ -31,30 +16,37 @@ MODEL_NAME = "qwen2.5:7b"
 SYSTEM_PROMPT = """
 You are a parameter extraction engine for a Warehouse Management System.
 
-Given a user query and the detected intents, extract any specific filter parameters mentioned.
+Given a user query and detected intents, extract specific filter parameters.
 
 EXTRACTABLE PARAMETERS:
-- zone       : single zone name (e.g. "A", "B", "Zone A", "cold storage")
-- zones      : list of zone names when comparing multiple (e.g. ["A", "B"])
+- zone       : single zone name for lookup (e.g. "Zone A", "Zone B")
+- zones      : list of zone names for comparison (e.g. ["Zone A", "Zone B"])
 - sku        : product SKU code mentioned
-- severity   : alert severity filter ("critical", "warning", "error", "info")
+- severity   : alert severity ("critical", "warning", "error", "info")
 - status     : order/task/ASN status filter
-- limit      : number of results requested (e.g. "show top 10" → 10)
-- hours_threshold: number of hours for stuck/overdue detection
+- limit      : number of results (e.g. "top 10" → 10)
+- hours_threshold: hours for stuck/overdue detection
+
+ZONE NORMALIZATION RULES:
+- Always return zones in "Zone X" format with capital Z and uppercase letter
+- "zone a" → "Zone A"
+- "zone b" → "Zone B"  
+- "Zone A" → "Zone A"
+- "A" → "Zone A"
+- "cold storage" → "cold storage" (keep as-is if not a letter zone)
 
 RULES:
 - Only extract parameters explicitly mentioned in the query
-- Normalize zone names: "Zone A" → "A", "zone b" → "B"
 - If a parameter is not mentioned, do not include it
-- Return empty dict {} if no parameters are found
+- Return empty dict {} if no parameters found
 - Return STRICT JSON only — no prose, no markdown fences
 
 EXAMPLES:
 Query: "show inventory of zone A"
-Output: {"zone": "A", "zones": ["A"]}
+Output: {"zone": "Zone A", "zones": ["Zone A"]}
 
 Query: "compare inventory of zone A and zone B"
-Output: {"zones": ["A", "B"]}
+Output: {"zones": ["Zone A", "Zone B"]}
 
 Query: "show top 5 critical alerts"
 Output: {"limit": 5, "severity": "critical"}
@@ -65,16 +57,12 @@ Output: {"hours_threshold": 48}
 Query: "show all blocked tasks"
 Output: {}
 
-Query: "show warehouse overview"
+Query: "compare all zones"
 Output: {}
 """
 
 
 def extract_params(query: str, intents: List[IntentScore]) -> Dict[str, Any]:
-    """
-    Extracts structured parameters from the user query.
-    Returns empty dict if nothing relevant is found or if LLM fails.
-    """
     print("\n--------------------------------------------------")
     print("🔍 Param LLM called")
 
@@ -103,11 +91,11 @@ Output:"""
 
         params = _extract_json(raw)
 
-        # Normalize zone names (remove "zone " prefix, uppercase)
+        # Safety normalization in case LLM doesn't follow format perfectly
         if "zone" in params:
-            params["zone"] = _normalize_zone(params["zone"])
-        if "zones" in params:
-            params["zones"] = [_normalize_zone(z) for z in params["zones"]]
+            params["zone"] = _normalize_zone(str(params["zone"]))
+        if "zones" in params and isinstance(params["zones"], list):
+            params["zones"] = [_normalize_zone(str(z)) for z in params["zones"]]
 
         print("✅ Extracted params:", params)
         return params
@@ -118,13 +106,33 @@ Output:"""
 
 
 def _normalize_zone(zone: str) -> str:
+    """
+    Normalizes zone names to match DB format: "Zone A", "Zone B", etc.
+
+    "A"      → "Zone A"
+    "zone a" → "Zone A"
+    "Zone A" → "Zone A"
+    "Zone b" → "Zone B"
+    "cold storage" → "cold storage"  (non-letter zones kept as-is)
+    """
     z = zone.strip()
-    # If already has "Zone " prefix, normalize capitalization and return
-    if re.match(r"(?i)^zone\s+\w+$", z):
-        parts = z.split()
-        return f"{parts[0].capitalize()} {parts[1].upper()}"
-    # No prefix — add it
-    return f"Zone {z.upper()}"
+
+    # Already in "Zone X" format — just normalize case
+    match = re.match(r"(?i)^zone[\s\-_]+(.+)$", z)
+    if match:
+        suffix = match.group(1).strip()
+        # Single letter → uppercase
+        if len(suffix) == 1:
+            suffix = suffix.upper()
+        return f"Zone {suffix}"
+
+    # Just a single letter like "A", "b"
+    if len(z) == 1 and z.isalpha():
+        return f"Zone {z.upper()}"
+
+    # Multi-word non-standard zone — return as-is
+    return z
+
 
 def _extract_json(text: str) -> dict:
     try:
