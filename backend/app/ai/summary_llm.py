@@ -10,38 +10,44 @@ import requests
 from typing import Any, Dict, List
 
 from app.core.schemas import IntentScore, SummaryResponse, WidgetConfig
+from app.ai.widget_registry import WIDGET_REGISTRY, FALLBACK_MAP
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL_NAME = "qwen2.5:7b"
 
-WIDGET_CATALOGUE = """
-Available widget types and when to use them:
 
-| widget type        | use for                                             | correct data_key example         |
-|--------------------|-----------------------------------------------------|----------------------------------|
-| ALERT_LIST         | warehouse alerts / critical issues                  | alerts.alerts                    |
-| TABLE              | generic tabular data (orders, tasks, ASNs, items)  | low_stock.items / orders.orders  |
-| BAR_CHART          | comparing numeric values across categories          | zone_comparison                  |
-| ZONE_COMPARE_CHART | side-by-side zone inventory comparison              | zone_comparison                  |
-| LINE_CHART         | trends over time                                    | (time-series data key)           |
-| KPI_CARDS          | key performance indicators                          | kpis.kpis                        |
-| INBOUND_SUMMARY    | inbound / ASN activity summary                      | inbound.items                    |
-| OVERVIEW_PANEL     | high-level warehouse overview                       | overview                         |
+# ── Prompt generation ─────────────────────────────────────────────────────────
 
+def _build_catalogue_table() -> str:
+    """Generates the widget catalogue table from WIDGET_REGISTRY."""
+    col1 = max(len(w["type"])     for w in WIDGET_REGISTRY) + 2
+    col2 = max(len(w["use_for"])  for w in WIDGET_REGISTRY) + 2
+    col3 = max(len(w["data_key"]) for w in WIDGET_REGISTRY) + 2
+
+    header  = f"| {'widget type':<{col1}}| {'use for':<{col2}}| {'example data_key':<{col3}}|"
+    divider = f"|{'-'*(col1+1)}|{'-'*(col2+1)}|{'-'*(col3+1)}|"
+    rows = [
+        f"| {w['type']:<{col1}}| {w['use_for']:<{col2}}| {w['data_key']:<{col3}}|"
+        for w in WIDGET_REGISTRY
+    ]
+    return "\n".join([header, divider] + rows)
+
+
+_DATA_KEY_RULES = """
 IMPORTANT data_key rules:
-- data_key is a dot-path into tool_outputs, e.g. "alerts.alerts" means tool_outputs["alerts"]["alerts"]
-- For zone comparison the tool returns {{ "zone_count": N, "zones": [...] }}
-  so use data_key "zone_comparison" (the whole object) — the chart component handles it internally
-- For low stock use "low_stock.items"
-- For alerts use "alerts.alerts"
-- For tasks use "blocked_tasks.tasks" or "active_tasks.tasks"
-- For orders use "orders.orders" or "stuck_orders.orders"
-- For KPIs use "kpis.kpis"
-- NEVER invent a data_key that does not exist in the tool_outputs snapshot below
+- data_key is a dot-path into tool_outputs
+  e.g. "alerts.alerts" → tool_outputs["alerts"]["alerts"]
+- For zone comparison pass the whole object: "zone_comparison"
+- For low stock:  "low_stock.items"
+- For alerts:     "alerts.alerts"
+- For tasks:      "blocked_tasks.tasks" or "active_tasks.tasks"
+- For orders:     "orders.orders" or "stuck_orders.orders"
+- For KPIs:       "kpis.kpis"
+- NEVER invent a data_key that does not exist in the tool_outputs snapshot
 """
 
-SYSTEM_PROMPT = f"""
-You are the UI composition engine for a Warehouse Management System dashboard.
+def _build_system_prompt() -> str:
+    return f"""You are the UI composition engine for a Warehouse Management System dashboard.
 
 You receive:
 1. The user's original query
@@ -49,13 +55,15 @@ You receive:
 3. The actual data fetched from the warehouse database (tool_outputs)
 
 Your job:
-1. Write a SHORT, factual summary (2-3 sentences max) based ONLY on the numbers in tool_outputs.
-   - Do NOT invent or guess any numbers.
-2. Choose which widgets to render and in what order (most important first).
-   - Use ONLY widget types from the catalogue.
-   - data_key MUST be a valid dot-path into tool_outputs as shown in the catalogue rules.
+1. Write a SHORT factual summary (2-3 sentences) using ONLY real numbers from tool_outputs.
+   Do NOT invent or guess any numbers.
+2. Choose which widgets to render, most important first.
+   Use ONLY widget types from the catalogue below.
 
-{WIDGET_CATALOGUE}
+Available widgets:
+{_build_catalogue_table()}
+
+{_DATA_KEY_RULES}
 
 Return STRICT JSON only — no prose, no markdown fences.
 
@@ -70,9 +78,17 @@ FORMAT:
       "props": {{}}
     }}
   ]
-}}
-"""
+}}"""
 
+
+# Cache at module load — WIDGET_REGISTRY doesn't change at runtime
+_SYSTEM_PROMPT = _build_system_prompt()
+
+# Keys whose lists must NOT be trimmed in the snapshot
+_NO_TRIM_KEYS = {"zones", "kpis"}
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
 
 def generate_summary_and_widgets(
     query: str,
@@ -85,19 +101,17 @@ def generate_summary_and_widgets(
     data_snapshot = _build_data_snapshot(tool_outputs)
     intent_list   = ", ".join(f"{s.intent.value}({s.confidence:.2f})" for s in intents)
 
-    user_context = f"""
-User query: {query}
+    user_context = f"""User query: {query}
 
 Detected intents: {intent_list}
 
 Tool outputs (actual warehouse data):
-{data_snapshot}
-"""
+{data_snapshot}"""
 
     payload = {
-        "model": MODEL_NAME,
-        "prompt": f"{SYSTEM_PROMPT}\n\n{user_context}",
-        "stream": False,
+        "model":   MODEL_NAME,
+        "prompt":  f"{_SYSTEM_PROMPT}\n\n{user_context}",
+        "stream":  False,
         "options": {"temperature": 0},
     }
 
@@ -131,17 +145,7 @@ Tool outputs (actual warehouse data):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-# Keys where we should NOT trim the list — the full array IS the data
-_NO_TRIM_KEYS = {"zones", "kpis"}
-
-
 def _build_data_snapshot(tool_outputs: Dict[str, Any]) -> str:
-    """
-    Compact snapshot sent to the LLM.
-    - Lists are trimmed to first 2 rows to keep prompt small
-    - Exception: keys in _NO_TRIM_KEYS are kept in full (e.g. zones array)
-    - Counts are always preserved so the LLM can cite real numbers
-    """
     snapshot: Dict[str, Any] = {}
     for key, value in tool_outputs.items():
         if isinstance(value, dict):
@@ -149,9 +153,9 @@ def _build_data_snapshot(tool_outputs: Dict[str, Any]) -> str:
             for k, v in value.items():
                 if isinstance(v, list):
                     if k in _NO_TRIM_KEYS:
-                        trimmed[k] = v          # keep full list
+                        trimmed[k] = v
                     else:
-                        trimmed[k] = v[:2]      # trim to 2 rows
+                        trimmed[k] = v[:2]
                         trimmed[f"{k}__total"] = len(v)
                 else:
                     trimmed[k] = v
@@ -162,34 +166,15 @@ def _build_data_snapshot(tool_outputs: Dict[str, Any]) -> str:
 
 
 def _fallback_response(tool_outputs: Dict[str, Any]) -> SummaryResponse:
-    """Auto-generate one widget per data key if the LLM fails."""
-    FALLBACK_TYPES: Dict[str, str] = {
-        "alerts":          "ALERT_LIST",
-        "zone_comparison": "ZONE_COMPARE_CHART",
-        "low_stock":       "TABLE",
-        "kpis":            "KPI_CARDS",
-        "inbound":         "INBOUND_SUMMARY",
-        "overview":        "OVERVIEW_PANEL",
-    }
-    FALLBACK_KEYS: Dict[str, str] = {
-        "alerts":          "alerts.alerts",
-        "zone_comparison": "zone_comparison",
-        "low_stock":       "low_stock.items",
-        "kpis":            "kpis.kpis",
-        "inbound":         "inbound.items",
-        "overview":        "overview",
-    }
-
     widgets = []
     for key in tool_outputs:
-        widgets.append(
-            WidgetConfig(
-                type=FALLBACK_TYPES.get(key, "TABLE"),
-                title=key.replace("_", " ").title(),
-                data_key=FALLBACK_KEYS.get(key, key),
-                props=None,
-            )
-        )
+        widget_type, data_key = FALLBACK_MAP.get(key, ("TABLE", key))
+        widgets.append(WidgetConfig(
+            type=widget_type,
+            title=key.replace("_", " ").title(),
+            data_key=data_key,
+            props=None,
+        ))
     return SummaryResponse(
         summary="Here is your warehouse data.",
         widgets=widgets,
