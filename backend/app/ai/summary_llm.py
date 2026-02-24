@@ -32,17 +32,17 @@ def _build_catalogue_table() -> str:
     ]
     return "\n".join([header, divider] + rows)
 
-
 _DATA_KEY_RULES = """
 IMPORTANT data_key rules:
-- data_key is a dot-path into tool_outputs
-  e.g. "alerts.alerts" → tool_outputs["alerts"]["alerts"]
+- data_key is a dot-path into tool_outputs — maximum 2 levels deep
+  e.g. "active_tasks.tasks" ✓    "active_tasks.tasks.estimated_minutes" ✗
 - For zone comparison pass the whole object: "zone_comparison"
 - For low stock:  "low_stock.items"
 - For alerts:     "alerts.alerts"
 - For tasks:      "blocked_tasks.tasks" or "active_tasks.tasks"
 - For orders:     "orders.orders" or "stuck_orders.orders"
 - For KPIs:       "kpis.kpis"
+- NEVER go deeper than 2 levels — sorting/filtering is done in SQL, not data_key
 - NEVER invent a data_key that does not exist in the tool_outputs snapshot
 """
 

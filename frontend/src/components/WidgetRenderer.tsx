@@ -12,13 +12,13 @@ interface Props {
 }
 
 const WIDGET_MAP: Record<string, React.FC<{ data: any; props?: any }>> = {
-  ALERT_LIST:         AlertListWidget,
-  TABLE:              TableWidget,
-  BAR_CHART:          BarChartWidget,
+  ALERT_LIST: AlertListWidget,
+  TABLE: TableWidget,
+  BAR_CHART: BarChartWidget,
   ZONE_COMPARE_CHART: BarChartWidget,
-  LINE_CHART:         LineChartWidget,
-  KPI_CARDS:          KPICardsWidget,
-  INBOUND_SUMMARY:    TableWidget,
+  LINE_CHART: LineChartWidget,
+  KPI_CARDS: KPICardsWidget,
+  INBOUND_SUMMARY: TableWidget,
 };
 
 const CHART_COLORS = [
@@ -29,12 +29,35 @@ const CHART_COLORS = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function resolvePath(obj: Record<string, unknown>, path: string): unknown {
-  return path.split(".").reduce<unknown>((acc, key) => {
+  const parts = path.split(".");
+
+  // Try full path first
+  const full = parts.reduce<unknown>((acc, key) => {
     if (acc && typeof acc === "object" && !Array.isArray(acc)) {
       return (acc as Record<string, unknown>)[key];
     }
     return undefined;
   }, obj);
+
+  if (full !== undefined) return full;
+
+  // If full path failed and has 3+ parts, fall back to parent path
+  if (parts.length >= 3) {
+    const parentPath = parts.slice(0, -1).join(".");
+    const parent = parentPath.split(".").reduce<unknown>((acc, key) => {
+      if (acc && typeof acc === "object" && !Array.isArray(acc)) {
+        return (acc as Record<string, unknown>)[key];
+      }
+      return undefined;
+    }, obj);
+
+    if (parent !== undefined) {
+      console.warn(`[WidgetRenderer] "${path}" not found — falling back to "${parentPath}"`);
+      return parent;
+    }
+  }
+
+  return undefined;
 }
 
 function toTableData(raw: unknown): { columns: string[]; rows: unknown[][] } | null {
@@ -178,10 +201,10 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
         );
         let points: unknown[] = dateKey
           ? [...arr].sort((a, b) => {
-              const av = (a as Record<string, unknown>)[dateKey] as string;
-              const bv = (b as Record<string, unknown>)[dateKey] as string;
-              return av < bv ? -1 : av > bv ? 1 : 0;
-            })
+            const av = (a as Record<string, unknown>)[dateKey] as string;
+            const bv = (b as Record<string, unknown>)[dateKey] as string;
+            return av < bv ? -1 : av > bv ? 1 : 0;
+          })
           : arr;
         points = points.map((item) => {
           const obj = { ...(item as Record<string, unknown>) };

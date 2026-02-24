@@ -12,22 +12,19 @@ def _normalize_tasks(rows):
 
 def get_active_tasks(db: Session, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     params = params or {}
-    limit = int(params.get("limit", 30))
-
+    limit  = int(params.get("limit", 50))
+    
     sql = """
-    SELECT
-      id, task_type, status, priority, assigned_to, assignee_name, zone,
-      source_location, destination_location, reference_id,
-      created_at, started_at, completed_at, estimated_minutes,
-      is_blocked, block_reason
+    SELECT id, task_type, status, priority, assignee_name,
+           zone, source_location, destination_location,
+           estimated_minutes, is_blocked, block_reason
     FROM warehouse_tasks
-    WHERE LOWER(status) IN ('queued', 'in-progress')
-    ORDER BY created_at DESC
+    WHERE status NOT IN ('completed', 'cancelled')
+    ORDER BY estimated_minutes DESC   -- ← highest first
     LIMIT :limit
     """
-    tasks = _normalize_tasks(fetch_all(db, sql, {"limit": limit}))
+    tasks = fetch_all(db, sql, {"limit": limit})
     return {"count": len(tasks), "tasks": tasks}
-
 
 def get_blocked_tasks(db: Session, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     params = params or {}
