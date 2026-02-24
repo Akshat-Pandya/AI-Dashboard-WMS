@@ -3,7 +3,7 @@ registry.py
 Maps every Intent enum value to the callable tool function that serves it.
 Add a new intent here and it is automatically picked up by the orchestrator.
 """
-from typing import Callable, Dict, List
+from typing import Callable, Dict
 
 from app.core.schemas import Intent
 
@@ -15,12 +15,11 @@ from app.tools.inbound.tools    import get_inbound_activity, get_overdue_asns
 from app.tools.kpis.tools       import get_kpi_summary
 from app.tools.overview.tools   import get_warehouse_overview
 
-
 INTENT_TOOL_MAP: Dict[Intent, Callable] = {
     Intent.WAREHOUSE_ALERTS:       get_alerts,
     Intent.LOW_STOCK:              get_low_stock_items,
-    Intent.INVENTORY_LOOKUP:       get_inventory_lookup,
-    Intent.ZONE_INVENTORY_COMPARE: compare_zones,
+    Intent.INVENTORY_LOOKUP:       get_inventory_lookup,   # ← was get_inventory_by_zone
+    Intent.ZONE_INVENTORY_COMPARE: compare_zones,          # ← was get_inventory_by_zone
     Intent.ORDER_STATUS:           get_orders_by_status,
     Intent.ORDERS_STUCK:           get_stuck_orders,
     Intent.ACTIVE_TASKS:           get_active_tasks,
@@ -44,25 +43,4 @@ INTENT_DATA_KEY: Dict[Intent, str] = {
     Intent.OVERDUE_ASN:            "overdue_asn",
     Intent.KPI_SUMMARY:            "kpis",
     Intent.WAREHOUSE_OVERVIEW:     "overview",
-}
-
-INTENT_PARAM_HINTS = {
-    Intent.WAREHOUSE_ALERTS: {
-        "severity": None,
-        "only_unacknowledged": False,
-        "limit": 20,
-    },
-    Intent.KPI_SUMMARY: {
-        "category": None,
-        "limit": 10,
-    },
-    Intent.LOW_STOCK: {
-        "limit": 10,
-    },
-    Intent.INBOUND_ACTIVITY: {
-        "limit": 10,
-    },
-    Intent.OVERDUE_ASN: {
-        "limit": 10,
-    },
 }

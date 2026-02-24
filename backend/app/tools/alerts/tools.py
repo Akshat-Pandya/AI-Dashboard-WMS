@@ -7,7 +7,7 @@ from app.tools.common import fetch_all, to_bool
 def get_alerts(db: Session, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     params = params or {}
     limit = int(params.get("limit", 20))
-    severity = (params.get("severity") or "").strip().lower()
+    severity = (params.get("severity") or "").strip().lower()  # optional
     only_unack = params.get("only_unacknowledged", False)
 
     where = []
@@ -29,7 +29,6 @@ def get_alerts(db: Session, params: Optional[Dict[str, Any]] = None) -> Dict[str
     ORDER BY timestamp DESC
     LIMIT :limit
     """
-
     alerts = fetch_all(db, sql, sql_params)
     for a in alerts:
         a["acknowledged"] = to_bool(a.get("acknowledged"))

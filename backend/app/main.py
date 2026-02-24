@@ -25,14 +25,9 @@ app.add_middleware(
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 # New orchestration pipeline: POST /api/query  →  QueryResponse
-app.include_router(query_router, prefix="/api")  # mounts at /api/query
+app.include_router(query_router)
 # app.include_router(query_router, prefix="/api", tags=["Query"])
 
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
 
 # ── Legacy chat endpoint (kept for compatibility) ─────────────────────────────
 @app.post("/chat", response_model=WidgetResponse)
