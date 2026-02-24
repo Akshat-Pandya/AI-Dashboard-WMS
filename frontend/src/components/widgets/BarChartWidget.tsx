@@ -1,37 +1,77 @@
 import React from "react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer,
   type TooltipProps,
 } from "recharts";
 import { R } from "@/tokens/brand";
-import type { BarChartData } from "@/types";
 
 interface Props {
-  data: BarChartData;
+  data: unknown;
+  props?: Record<string, unknown>;
 }
 
+const AUTO_COLORS = [
+  "#E8001C", "#3B82F6", "#10B981", "#F59E0B",
+  "#8B5CF6", "#EC4899", "#14B8A6", "#F97316",
+];
+
+const LABEL: Record<string, string> = {
+  total_on_hand:   "On Hand",
+  total_available: "Available",
+  total_reserved:  "Reserved",
+  low_stock_skus:  "Low Stock SKUs",
+  zero_stock_skus: "Zero Stock SKUs",
+  total_skus:      "Total SKUs",
+  avg_available:   "Avg Available",
+};
+
+// ── Normalise any incoming shape into { bars, keys, colors } ─────────────────
+function normalise(raw: unknown): {
+  bars: Record<string, unknown>[];
+  keys: string[];
+  colors: string[];
+} | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+
+  // Already shaped: { bars: [], keys: [], colors: [] }
+  if (Array.isArray(obj.bars) && Array.isArray(obj.keys)) {
+    return {
+      bars:   obj.bars as Record<string, unknown>[],
+      keys:   obj.keys as string[],
+      colors: (obj.colors as string[]) ?? AUTO_COLORS,
+    };
+  }
+
+  // compare_zones shape: { zones: [{ zone, total_on_hand, low_stock_skus, ... }] }
+  if (Array.isArray(obj.zones) && (obj.zones as unknown[]).length > 0) {
+    const zones = obj.zones as Record<string, unknown>[];
+    const numericKeys = Object.keys(zones[0]).filter(
+      (k) => k !== "zone" && typeof zones[0][k] === "number"
+    );
+    const bars = zones.map((z) => ({
+      zone: z.zone,
+      ...Object.fromEntries(numericKeys.map((k) => [LABEL[k] ?? k, z[k]])),
+    }));
+    const keys   = numericKeys.map((k) => LABEL[k] ?? k);
+    const colors = AUTO_COLORS.slice(0, keys.length);
+    return { bars, keys, colors };
+  }
+
+  return null;
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
 const CustomTooltip: React.FC<TooltipProps<number, string>> = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background: R.white,
-      border: `1px solid ${R.border}`,
-      borderRadius: 3,
-      padding: "10px 14px",
-      boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+      background: R.white, border: `1px solid ${R.border}`, borderRadius: 3,
+      padding: "10px 14px", boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
       fontFamily: "'Barlow', sans-serif",
     }}>
-      <p style={{
-        fontSize: 10, fontWeight: 700, color: R.textSecondary,
-        marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em",
-      }}>
+      <p style={{ fontSize: 10, fontWeight: 700, color: R.textSecondary, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>
         {label}
       </p>
       {payload.map((p, i) => (
@@ -44,51 +84,40 @@ const CustomTooltip: React.FC<TooltipProps<number, string>> = ({ active, payload
   );
 };
 
+// ── Component ─────────────────────────────────────────────────────────────────
 export const BarChartWidget: React.FC<Props> = ({ data }) => {
-  // Guards — never crash even if adaptData didn't fully shape the data
-  const bars = Array.isArray(data?.bars) ? data.bars : [];
-  const keys = Array.isArray(data?.keys) ? data.keys : [];
-  const colors = Array.isArray(data?.colors) ? data.colors : [];
+  const shaped = normalise(data);
 
-  if (keys.length === 0 || bars.length === 0) {
+  if (!shaped || shaped.bars.length === 0) {
     return (
-      <p style={{ color: "#9CA3AF", fontSize: 13, fontFamily: "'Barlow', sans-serif" }}>
+      <p style={{ color: R.textMuted, fontSize: 13, fontFamily: "'Barlow', sans-serif" }}>
         No chart data available.
       </p>
     );
   }
 
-  // Detect the category axis key (first string field in the data)
-  const firstRow = bars[0] as Record<string, unknown>;
-  const categoryKey = Object.keys(firstRow).find(
-    (k) => !keys.includes(k) && typeof firstRow[k] === "string"
-  ) ?? Object.keys(firstRow)[0];
+  const { bars, keys, colors } = shaped;
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height={260}>
       <BarChart data={bars} margin={{ top: 8, right: 8, left: -10, bottom: 0 }} barGap={6}>
         <CartesianGrid strokeDasharray="3 3" stroke={R.borderLight} vertical={false} />
         <XAxis
-          dataKey={categoryKey}
+          dataKey="zone"
           tick={{ fontSize: 12, fill: R.textSecondary, fontFamily: "'Barlow', sans-serif", fontWeight: 600 }}
-          axisLine={false}
-          tickLine={false}
+          axisLine={false} tickLine={false}
         />
         <YAxis
           tick={{ fontSize: 11, fill: R.textMuted, fontFamily: "'Barlow', sans-serif" }}
-          axisLine={false}
-          tickLine={false}
+          axisLine={false} tickLine={false}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: R.bg }} />
-        <Legend wrapperStyle={{
-          fontSize: 12, fontFamily: "'Barlow', sans-serif",
-          paddingTop: 12, fontWeight: 600,
-        }} />
+        <Legend wrapperStyle={{ fontSize: 12, fontFamily: "'Barlow', sans-serif", paddingTop: 12, fontWeight: 600 }} />
         {keys.map((key, i) => (
           <Bar
             key={key}
             dataKey={key}
-            fill={colors[i] ?? "#E8001C"}
+            fill={colors[i] ?? AUTO_COLORS[i % AUTO_COLORS.length]}
             radius={[3, 3, 0, 0]}
             maxBarSize={64}
           />

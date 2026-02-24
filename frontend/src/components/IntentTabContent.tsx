@@ -48,7 +48,7 @@ export const IntentTabContent: React.FC<Props> = ({ result, loading = false }) =
         ))}
       </div>
 
-      {/* Summary bullets */}
+      {/* Summary bullets
       {result.summary.length > 0 && (
         <div
           style={{
@@ -94,7 +94,7 @@ export const IntentTabContent: React.FC<Props> = ({ result, loading = false }) =
             </div>
           ))}
         </div>
-      )}
+      )} */}
 
       {/* Widgets — outer WidgetRenderer takes full widgets + data */}
       <WidgetRenderer widgets={result.widgets} data={result.data} />
