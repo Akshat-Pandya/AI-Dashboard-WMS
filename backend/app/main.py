@@ -3,14 +3,19 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.schemas import IntentRequest, WidgetResponse, QueryResponse
-from app.core.db_session import get_db
+from app.core.schemas     import IntentRequest, WidgetResponse, QueryResponse
+from app.core.db_session  import get_db
+from app.core.database    import engine, Base
+from app.core.models      import SavedDashboard          # ← NEW: registers ORM model
 
-from app.ai.intent_llm import classify_intent
-from app.ai.keyword_fallback import keyword_fallback
+from app.ai.intent_llm       import classify_intent
+from app.ai.keyword_fallback  import keyword_fallback
 
-from app.api.query import router as query_router
+from app.api.query       import router as query_router
+from app.api.dashboards  import router as dashboards_router   # ← NEW
 
+# Auto-create saved_dashboards table if it doesn't exist (idempotent)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="WMS Generative API")
 
@@ -24,15 +29,14 @@ app.add_middleware(
 )
 
 # ── Routers ───────────────────────────────────────────────────────────────────
-# New orchestration pipeline: POST /api/query  →  QueryResponse
 app.include_router(query_router)
-# app.include_router(query_router, prefix="/api", tags=["Query"])
+app.include_router(dashboards_router)    # ← NEW: /dashboards/* endpoints
 
 
 # ── Legacy chat endpoint (kept for compatibility) ─────────────────────────────
 @app.post("/chat", response_model=WidgetResponse)
 def chat(req: IntentRequest, db: Session = Depends(get_db)):
-    intent_result = classify_intent(req.query)
+    intent_result  = classify_intent(req.query)
     primary_intent = intent_result.intents[0].intent
 
     if primary_intent.name == "UNKNOWN":
