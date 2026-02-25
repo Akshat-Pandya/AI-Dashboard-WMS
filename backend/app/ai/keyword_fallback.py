@@ -23,4 +23,4 @@ def keyword_fallback(query: str) -> list[Intent]:
     for keywords, intent in KEYWORD_MAP:
         if any(kw in q for kw in keywords):
             matched.append(intent)
-    return matched if matched else [Intent.UNKNOWN]
+    return matched if matched else [Intent.UNSUPPORTED_WAREHOUSE]

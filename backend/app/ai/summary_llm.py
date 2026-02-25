@@ -3,6 +3,13 @@ summary_llm.py
 Receives the query, detected intents, and all tool outputs.
 Decides which UI widgets to render and in what order,
 then returns a short natural-language summary.
+
+Changes from original:
+  - _HALLUCINATION_GUARD added to system prompt           ← FIX 6
+  - _build_data_snapshot always emits __total for lists   ← FIX 6
+  - snapshot rows increased from 2 → 3                   ← FIX 6
+  - OVERVIEW_PANEL enforcement note in prompt             ← FIX 5 (Bug A)
+  - _DATA_KEY_RULES clarified for overview nested object  ← FIX 5 (Bug A)
 """
 import json
 import re
@@ -32,6 +39,7 @@ def _build_catalogue_table() -> str:
     ]
     return "\n".join([header, divider] + rows)
 
+
 _DATA_KEY_RULES = """
 IMPORTANT data_key rules:
 - data_key is a dot-path into tool_outputs — maximum 2 levels deep
@@ -42,9 +50,47 @@ IMPORTANT data_key rules:
 - For tasks:      "blocked_tasks.tasks" or "active_tasks.tasks"
 - For orders:     "orders.orders" or "stuck_orders.orders"
 - For KPIs:       "kpis.kpis"
+- For inbound:    "inbound.asns"
+- For warehouse_overview: data_key MUST be "overview"
+  The overview value is a NESTED OBJECT (inventory, orders, tasks, alerts, kpis, zones).
+  It is NOT a list. The OVERVIEW_PANEL component reads nested objects directly.
+  ALWAYS include OVERVIEW_PANEL with data_key="overview" when overview data is present.
+  NEVER skip this widget just because the data has no top-level array.
 - NEVER go deeper than 2 levels — sorting/filtering is done in SQL, not data_key
 - NEVER invent a data_key that does not exist in the tool_outputs snapshot
+- If a key ends in __total it is a count integer, NOT a data_key — never use __total as data_key
 """
+
+# ── Hallucination guard ───────────────────────────────────────────────────────
+# This is injected into the system prompt to constrain summary generation
+# to only facts present in the tool_outputs snapshot.
+
+_HALLUCINATION_GUARD = """
+STRICT SUMMARY RULES — violations produce incorrect dashboards:
+
+1. ONLY use numbers, statuses, and labels that appear VERBATIM in the
+   tool_outputs JSON shown above. Do not infer or calculate new values.
+
+2. If a list is truncated (has a corresponding __total key), use the __total
+   number as the count — NOT the number of rows shown in the preview.
+   Example: if alerts__total=12 and you see 3 rows, say "12 alerts", not "3 alerts".
+
+3. DO NOT say "critical" unless severity="critical" appears explicitly in the data.
+   DO NOT say "error" unless severity="error" appears explicitly in the data.
+   DO NOT infer severity, priority, or category from widget type or intent name.
+
+4. DO NOT say "all zones" unless every zone is present in the data.
+
+5. DO NOT say a number is a percentage unless the field name or unit says so.
+
+6. If you are uncertain about a specific number, say "several" or omit the number.
+
+7. Summary must be 2-3 sentences MAXIMUM. No bullet points. No markdown. Plain text only.
+
+8. Widget list must include OVERVIEW_PANEL (data_key="overview") whenever
+   overview data is present in tool_outputs — even if the data is a nested object.
+"""
+
 
 def _build_system_prompt() -> str:
     return f"""You are the UI composition engine for a Warehouse Management System dashboard.
@@ -64,6 +110,8 @@ Available widgets:
 {_build_catalogue_table()}
 
 {_DATA_KEY_RULES}
+
+{_HALLUCINATION_GUARD}
 
 Return STRICT JSON only — no prose, no markdown fences.
 
@@ -85,6 +133,7 @@ FORMAT:
 _SYSTEM_PROMPT = _build_system_prompt()
 
 # Keys whose lists must NOT be trimmed in the snapshot
+# (they are small enough that full data is safe to pass)
 _NO_TRIM_KEYS = {"zones", "kpis"}
 
 
@@ -102,9 +151,7 @@ def generate_summary_and_widgets(
     intent_list   = ", ".join(f"{s.intent.value}({s.confidence:.2f})" for s in intents)
 
     user_context = f"""User query: {query}
-
 Detected intents: {intent_list}
-
 Tool outputs (actual warehouse data):
 {data_snapshot}"""
 
@@ -118,8 +165,8 @@ Tool outputs (actual warehouse data):
     try:
         response = requests.post(OLLAMA_URL, json=payload, timeout=45)
         response.raise_for_status()
-        raw = response.json().get("response", "").strip()
 
+        raw = response.json().get("response", "").strip()
         print("📝 Raw summary LLM output:", raw[:300])
 
         parsed  = _extract_json(raw)
@@ -133,9 +180,17 @@ Tool outputs (actual warehouse data):
             for w in parsed.get("widgets", [])
         ]
 
+        # ── Validate data_keys against actual tool_outputs ────────────────────
+        # Strip any widgets whose data_key doesn't resolve into tool_outputs.
+        # This prevents broken widget configs reaching the frontend silently.
+        valid_widgets = _validate_widget_data_keys(widgets, tool_outputs)
+        invalid_count = len(widgets) - len(valid_widgets)
+        if invalid_count:
+            print(f"  ⚠️ Dropped {invalid_count} widget(s) with invalid data_key")
+
         return SummaryResponse(
             summary=parsed.get("summary", "Here is your warehouse data."),
-            widgets=widgets,
+            widgets=valid_widgets,
         )
 
     except Exception as e:
@@ -146,26 +201,91 @@ Tool outputs (actual warehouse data):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _build_data_snapshot(tool_outputs: Dict[str, Any]) -> str:
+    """
+    Builds a JSON snapshot of tool_outputs to pass to the summary LLM.
+
+    For lists:
+      - Always emits a __total key with the true count
+      - Shows first 3 rows as preview (up from 2 — enough for pattern detection)
+      - Exceptions: _NO_TRIM_KEYS lists are passed in full (zones, kpis are small)
+
+    This ensures the summary LLM sees accurate totals even when lists are
+    trimmed, preventing hallucinated counts like "3 alerts" when there are 12.
+    """
     snapshot: Dict[str, Any] = {}
+
     for key, value in tool_outputs.items():
         if isinstance(value, dict):
             trimmed: Dict[str, Any] = {}
             for k, v in value.items():
                 if isinstance(v, list):
                     if k in _NO_TRIM_KEYS:
+                        # Small known-safe lists — pass in full
                         trimmed[k] = v
                     else:
-                        trimmed[k] = v[:2]
+                        # Always emit __total so LLM uses real count
                         trimmed[f"{k}__total"] = len(v)
+                        trimmed[k] = v[:3]          # 3 rows instead of 2
                 else:
                     trimmed[k] = v
             snapshot[key] = trimmed
         else:
             snapshot[key] = value
+
     return json.dumps(snapshot, indent=2, default=str)
 
 
+def _validate_widget_data_keys(
+    widgets: List[WidgetConfig],
+    tool_outputs: Dict[str, Any],
+) -> List[WidgetConfig]:
+    """
+    Remove widgets whose data_key doesn't resolve into tool_outputs.
+    Prevents silent frontend failures where a widget renders nothing
+    because the LLM invented or mis-typed a data_key.
+
+    Validation logic (max 2 levels deep):
+      "overview"            → tool_outputs["overview"] must exist
+      "alerts.alerts"       → tool_outputs["alerts"]["alerts"] must exist
+      "zone_comparison"     → tool_outputs["zone_comparison"] must exist
+
+    Special case: "free_query" is always allowed (free-SQL path).
+    """
+    valid = []
+    for w in widgets:
+        if not w.data_key:
+            print(f"  ⚠️ Widget '{w.type}' has empty data_key — skipping")
+            continue
+
+        if w.data_key == "free_query":
+            valid.append(w)
+            continue
+
+        parts = w.data_key.split(".", 1)
+        top   = parts[0]
+
+        if top not in tool_outputs:
+            print(f"  ⚠️ Widget '{w.type}' data_key '{w.data_key}' — top-level key '{top}' not in tool_outputs")
+            continue
+
+        if len(parts) == 2:
+            nested = tool_outputs[top]
+            sub    = parts[1]
+            if not isinstance(nested, dict) or sub not in nested:
+                print(f"  ⚠️ Widget '{w.type}' data_key '{w.data_key}' — sub-key '{sub}' not found")
+                continue
+
+        valid.append(w)
+
+    return valid
+
+
 def _fallback_response(tool_outputs: Dict[str, Any]) -> SummaryResponse:
+    """
+    Used when the summary LLM call fails entirely.
+    Builds a minimal widget list from FALLBACK_MAP so the UI
+    always has something to render.
+    """
     widgets = []
     for key in tool_outputs:
         widget_type, data_key = FALLBACK_MAP.get(key, ("TABLE", key))

@@ -20,7 +20,17 @@ class Intent(str, Enum):
     OVERDUE_ASN            = "overdue_asn"
     WAREHOUSE_ALERTS       = "warehouse_alerts"
     KPI_SUMMARY            = "kpi_summary"
-    UNKNOWN                = "unknown"
+
+    # ── Fallback intents ──────────────────────────────────────────────────────
+    # UNKNOWN must stay — intent_llm.py and orchestrator.py reference it
+    # as the safe default when the LLM returns an unrecognised string,
+    # or when the LLM/network call fails entirely.
+    # Do NOT comment it out — that causes AttributeError at runtime.
+    UNKNOWN               = "unknown"                     # generic fallback, keep for safety
+
+    # These two replace UNKNOWN's dual role:
+    IRRELEVANT_QUERY      = "irrelevant_query"            # off-topic, no DB needed, early exit
+    UNSUPPORTED_WAREHOUSE = "unsupported_warehouse_query" # warehouse-related but no mapped tool → free SQL
 
 
 class IntentScore(BaseModel):
@@ -258,6 +268,7 @@ class QueryResponse(BaseModel):
     widgets: List[WidgetConfig]
     data: Dict[str, Any]
     intents: List[Dict[str, Any]] = []
+
 
 # ─────────────────────────────────────────────
 # Legacy (kept for compatibility)

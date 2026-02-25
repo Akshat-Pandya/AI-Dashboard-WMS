@@ -56,12 +56,25 @@ WIDGET_REGISTRY: List[Dict[str, Any]] = [
     {
         "type":         "INBOUND_SUMMARY",
         "use_for":      "inbound shipments, ASN activity summary",
-        "data_key":     "inbound.items",
+        "data_key":     "inbound.asns",
         "fallback_for": ["inbound"],
     },
     {
+        # ── CRITICAL NOTE FOR LLM ────────────────────────────────────────────
+        # overview data is a NESTED OBJECT (not a list).
+        # Structure: { inventory: {...}, orders: {...}, tasks: {...},
+        #              alerts: {...}, kpis: {...}, zones: {...} }
+        # data_key must be exactly "overview" — do NOT go deeper.
+        # ALWAYS include this widget when overview data is present.
+        # NEVER skip it just because the data has no top-level array.
+        # ─────────────────────────────────────────────────────────────────────
         "type":         "OVERVIEW_PANEL",
-        "use_for":      "high-level warehouse overview, all-up metrics",
+        "use_for":      (
+            "high-level warehouse overview, all-up metrics. "
+            "Data is a nested object (not a list) — data_key must be 'overview'. "
+            "ALWAYS include this widget when the intent is warehouse_overview. "
+            "Do NOT skip it because there is no array — the component handles nested objects."
+        ),
         "data_key":     "overview",
         "fallback_for": ["overview"],
     },
