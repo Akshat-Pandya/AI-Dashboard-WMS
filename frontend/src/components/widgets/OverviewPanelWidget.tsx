@@ -51,9 +51,9 @@ function num(v: number | string | undefined, fallback = 0): number {
 }
 
 function TrendArrow({ trend }: { trend?: string }) {
-  if (trend === "up")   return <span style={{ color: R.green,   fontSize: 11, marginLeft: 4 }}>▲</span>;
-  if (trend === "down") return <span style={{ color: R.red,     fontSize: 11, marginLeft: 4 }}>▼</span>;
-  return                       <span style={{ color: R.textMuted, fontSize: 11, marginLeft: 4 }}>—</span>;
+  if (trend === "up") return <span style={{ color: R.green, fontSize: 11, marginLeft: 4 }}>▲</span>;
+  if (trend === "down") return <span style={{ color: R.red, fontSize: 11, marginLeft: 4 }}>▼</span>;
+  return <span style={{ color: R.textMuted, fontSize: 11, marginLeft: 4 }}>—</span>;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -144,16 +144,16 @@ export const OverviewPanelWidget: React.FC<Props> = ({ data }) => {
     );
   }
 
-  const inv    = data.inventory  ?? {};
-  const orders = data.orders     ?? {};
-  const tasks  = data.tasks      ?? {};
-  const alerts = data.alerts     ?? {};
-  const kpis   = data.kpis?.kpis ?? [];
-  const zones  = data.zones?.zones_near_capacity ?? [];
+  const inv = data.inventory ?? {};
+  const orders = data.orders ?? {};
+  const tasks = data.tasks ?? {};
+  const alerts = data.alerts ?? {};
+  const kpis = data.kpis?.kpis ?? [];
+  const zones = data.zones?.zones_near_capacity ?? [];
 
-  const totalOrders    = Object.values(orders.orders_by_status ?? {}).reduce((s, v) => s + num(v), 0);
+  const totalOrders = Object.values(orders.orders_by_status ?? {}).reduce((s, v) => s + num(v), 0);
   const criticalAlerts = num(alerts.unacknowledged_critical_alerts);
-  const blockedTasks   = num(tasks.blocked_tasks);
+  const blockedTasks = num(tasks.blocked_tasks);
 
   return (
     <div style={{
