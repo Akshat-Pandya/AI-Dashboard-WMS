@@ -249,30 +249,82 @@ def _validate_widget_data_keys(
       "alerts.alerts"       → tool_outputs["alerts"]["alerts"] must exist
       "zone_comparison"     → tool_outputs["zone_comparison"] must exist
 
-    Special case: "free_query" is always allowed (free-SQL path).
+    Special cases:
+      - "free_query" is always allowed (free-SQL path).
+      - OVERVIEW_PANEL MUST have data_key exactly "overview" (no sub-paths).
+        The LLM sometimes generates "overview.kpis" or "overview.inventory"
+        which would pass generic dot-path validation but is wrong — the
+        OVERVIEW_PANEL component expects the full nested overview object.
+        We correct it in-place rather than dropping it, because the intent
+        is right even if the data_key is slightly off.
+
+    EXACT data_key requirements per widget type:
+      OVERVIEW_PANEL    → must be exactly "overview"  (corrected if wrong)
+      ZONE_COMPARE_CHART→ must be exactly "zone_comparison"
     """
+    # Canonical data_keys for specific widget types.
+    # If the LLM drifts from these, we correct rather than drop.
+    _CANONICAL_DATA_KEYS: Dict[str, str] = {
+        "OVERVIEW_PANEL":     "overview",
+        "ZONE_COMPARE_CHART": "zone_comparison",
+    }
+
     valid = []
     for w in widgets:
         if not w.data_key:
             print(f"  ⚠️ Widget '{w.type}' has empty data_key — skipping")
             continue
 
+        # ── Special case: free-SQL results are always valid ───────────────────
         if w.data_key == "free_query":
             valid.append(w)
             continue
 
+        # ── Special case: widgets with canonical fixed data_keys ──────────────
+        # Correct the data_key if LLM drifted (e.g. "overview.kpis" → "overview")
+        if w.type in _CANONICAL_DATA_KEYS:
+            canonical = _CANONICAL_DATA_KEYS[w.type]
+            if w.data_key != canonical:
+                print(
+                    f"  🔧 Correcting '{w.type}' data_key "
+                    f"'{w.data_key}' → '{canonical}'"
+                )
+                w = WidgetConfig(
+                    type=w.type,
+                    title=w.title,
+                    data_key=canonical,
+                    props=w.props,
+                )
+            # Validate the canonical key exists in tool_outputs
+            top = canonical.split(".")[0]
+            if top not in tool_outputs:
+                print(
+                    f"  ⚠️ Widget '{w.type}' requires '{canonical}' "
+                    f"but '{top}' not in tool_outputs — skipping"
+                )
+                continue
+            valid.append(w)
+            continue
+
+        # ── General case: dot-path validation (max 2 levels) ─────────────────
         parts = w.data_key.split(".", 1)
         top   = parts[0]
 
         if top not in tool_outputs:
-            print(f"  ⚠️ Widget '{w.type}' data_key '{w.data_key}' — top-level key '{top}' not in tool_outputs")
+            print(
+                f"  ⚠️ Widget '{w.type}' data_key '{w.data_key}' "
+                f"— top-level key '{top}' not in tool_outputs"
+            )
             continue
 
         if len(parts) == 2:
             nested = tool_outputs[top]
             sub    = parts[1]
             if not isinstance(nested, dict) or sub not in nested:
-                print(f"  ⚠️ Widget '{w.type}' data_key '{w.data_key}' — sub-key '{sub}' not found")
+                print(
+                    f"  ⚠️ Widget '{w.type}' data_key '{w.data_key}' "
+                    f"— sub-key '{sub}' not found in tool_outputs['{top}']"
+                )
                 continue
 
         valid.append(w)

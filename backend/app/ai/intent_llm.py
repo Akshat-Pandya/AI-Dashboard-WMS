@@ -140,6 +140,7 @@ def classify_intent(query: str) -> IntentResult:
         # ── Post-processing: normalize confidence scores ──────────────────────
         # Must happen BEFORE threshold filter so decay doesn't drop valid intents
         scores   = _normalize_confidence(scores, query)
+
         filtered = [s for s in scores if s.confidence >= INTENT_CONFIDENCE_THRESHOLD]
 
         if not filtered:

@@ -247,14 +247,29 @@ def _ensure_widgets(
       - warehouse_overview returning 0 widgets (LLM forgets OVERVIEW_PANEL)
       - Any intent where the summary LLM omits a widget by mistake
 
+    BUG FIX vs original:
+      Previously used split('.')[0] to build `covered`, so a widget with
+      data_key='overview.kpis' would mark 'overview' as covered, blocking
+      fallback injection of the correct OVERVIEW_PANEL widget.
+      Now we match against the FULL canonical data_key for each intent
+      so only a correct widget blocks the fallback.
+
     Guarantee: only ADDS widgets, never removes existing ones.
     """
     if not tool_outputs:
         return widgets
 
-    # Collect the top-level data keys already covered by existing widgets
-    # e.g. widget with data_key="alerts.alerts" covers top-level key "alerts"
-    covered: set = {w.data_key.split(".")[0] for w in widgets}
+    # Build a set of full data_keys already correctly covered.
+    # A widget covers a data_key only if its data_key exactly matches
+    # the canonical FALLBACK_MAP entry for that tool output key.
+    # This prevents a wrong "overview.kpis" from blocking "overview".
+    correctly_covered: set = set()
+    for w in widgets:
+        # Exact match to FALLBACK_MAP values
+        for tool_key, (_, canonical_dk) in FALLBACK_MAP.items():
+            if w.data_key == canonical_dk:
+                correctly_covered.add(tool_key)
+                break
 
     extras: List[WidgetConfig] = []
 
@@ -269,12 +284,12 @@ def _ensure_widgets(
         data_key = INTENT_DATA_KEY.get(score.intent)
         if not data_key:
             continue
-        if data_key in covered:
+        if data_key in correctly_covered:
             continue
         if data_key not in tool_outputs:
             continue  # tool didn't run or returned nothing
 
-        # Data exists but no widget covers it — inject fallback
+        # Data exists but no correct widget covers it — inject fallback
         widget_type, full_data_key = FALLBACK_MAP.get(data_key, ("TABLE", data_key))
         title = data_key.replace("_", " ").title()
 
@@ -286,7 +301,7 @@ def _ensure_widgets(
             data_key=full_data_key,
             props=None,
         ))
-        covered.add(data_key)
+        correctly_covered.add(data_key)
 
     return widgets + extras
 
