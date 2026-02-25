@@ -2,20 +2,20 @@ import React, { useState, useEffect } from "react";
 import { R } from "@/tokens/brand";
 
 interface DashboardMeta {
-  id:          string;
-  query_text:  string;
+  id: string;
+  query_text: string;
   intent_name: string | null;
-  label:       string | null;
-  created_at:  string;
+  label: string | null;
+  created_at: string;
 }
 
 interface Props {
-  history:          string[];
-  activeQuery:      string;                                              // ← new
-  loading:          boolean;
-  onSubmit:         (query: string) => void | Promise<void>;
-  mode?:            "history" | "saved";
-  onRunSaved?:      (id: string, queryText: string) => void | Promise<void>;
+  history: string[];
+  activeQuery: string;                                              // ← new
+  loading: boolean;
+  onSubmit: (query: string) => void | Promise<void>;
+  mode?: "history" | "saved";
+  onRunSaved?: (id: string, queryText: string) => void | Promise<void>;
   savedRefreshKey?: number;
 }
 
@@ -37,10 +37,10 @@ export const ChatPanel: React.FC<Props> = ({
   onRunSaved,
   savedRefreshKey = 0,
 }) => {
-  const [input, setInput]           = useState("");
+  const [input, setInput] = useState("");
   const [dashboards, setDashboards] = useState<DashboardMeta[]>([]);
-  const [fetching, setFetching]     = useState(false);
-  const [deleting, setDeleting]     = useState<string | null>(null);
+  const [fetching, setFetching] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     if (mode !== "saved") return;
@@ -154,7 +154,7 @@ export const ChatPanel: React.FC<Props> = ({
         </div>
 
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {fetching && [1,2,3].map((i) => (
+          {fetching && [1, 2, 3].map((i) => (
             <div key={i} style={{
               height: 52, background: R.darkGray, borderRadius: 3,
               margin: "0 12px 8px", opacity: 0.5,

@@ -4,6 +4,7 @@ import { TableWidget } from "./widgets/TableWidget";
 import { BarChartWidget } from "./widgets/BarChartWidget";
 import { LineChartWidget } from "./widgets/LineChartWidget";
 import { KPICardsWidget } from "./widgets/KPICardsWidget";
+import { OverviewPanelWidget } from "./widgets/OverviewPanelWidget"; // ← NEW
 import type { WidgetConfig } from "@/types";
 
 interface Props {
@@ -12,13 +13,14 @@ interface Props {
 }
 
 const WIDGET_MAP: Record<string, React.FC<{ data: any; props?: any }>> = {
-  ALERT_LIST: AlertListWidget,
-  TABLE: TableWidget,
-  BAR_CHART: BarChartWidget,
+  ALERT_LIST:         AlertListWidget,
+  TABLE:              TableWidget,
+  BAR_CHART:          BarChartWidget,
   ZONE_COMPARE_CHART: BarChartWidget,
-  LINE_CHART: LineChartWidget,
-  KPI_CARDS: KPICardsWidget,
-  INBOUND_SUMMARY: TableWidget,
+  LINE_CHART:         LineChartWidget,
+  KPI_CARDS:          KPICardsWidget,
+  INBOUND_SUMMARY:    TableWidget,
+  OVERVIEW_PANEL:     OverviewPanelWidget, // ← NEW — was missing, caused blank render
 };
 
 const CHART_COLORS = [
@@ -80,7 +82,6 @@ function isNumericValue(v: unknown): boolean {
 /**
  * Converts array of objects → BarChartData.
  * Handles numeric values stored as strings (common from MySQL).
- * e.g. [{ zone: "A", total_units: "4800", low_stock_count: "6" }]
  */
 function toBarChartData(
   raw: unknown[],
@@ -92,7 +93,6 @@ function toBarChartData(
 
   const allKeys = Object.keys(first as object);
 
-  // Detect numeric or numeric-string keys, skip obvious ID/name/string fields
   const numericKeys = allKeys.filter((k) => {
     const val = (first as Record<string, unknown>)[k];
     return isNumericValue(val);
@@ -101,13 +101,11 @@ function toBarChartData(
   const keys = propsKeys ?? numericKeys;
 
   if (keys.length === 0) {
-    // Fallback: use all non-first keys
     const fallbackKeys = allKeys.slice(1);
     const colors = fallbackKeys.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
     return { bars: raw, keys: fallbackKeys, colors };
   }
 
-  // Coerce string numbers to actual numbers in the data
   const bars = raw.map((item) => {
     const obj = { ...(item as Record<string, unknown>) };
     keys.forEach((k) => {
@@ -149,7 +147,6 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
 
     case "BAR_CHART":
     case "ZONE_COMPARE_CHART": {
-      // Already properly shaped
       if (
         resolved &&
         typeof resolved === "object" &&
@@ -201,10 +198,10 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
         );
         let points: unknown[] = dateKey
           ? [...arr].sort((a, b) => {
-            const av = (a as Record<string, unknown>)[dateKey] as string;
-            const bv = (b as Record<string, unknown>)[dateKey] as string;
-            return av < bv ? -1 : av > bv ? 1 : 0;
-          })
+              const av = (a as Record<string, unknown>)[dateKey] as string;
+              const bv = (b as Record<string, unknown>)[dateKey] as string;
+              return av < bv ? -1 : av > bv ? 1 : 0;
+            })
           : arr;
         points = points.map((item) => {
           const obj = { ...(item as Record<string, unknown>) };
@@ -237,6 +234,20 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
       if (resolved && typeof resolved === "object" && !Array.isArray(resolved)) return resolved;
       if (Array.isArray(resolved)) return { kpis: resolved };
       return resolved;
+    }
+
+    // ── OVERVIEW_PANEL ─────────────────────────────────────────────────────────
+    // The backend sends a nested object:
+    //   { inventory: {...}, orders: {...}, tasks: {...}, alerts: {...}, kpis: {...}, zones: {...} }
+    // OverviewPanelWidget reads it directly — no transformation needed.
+    // We still validate it's an object and not an accidental array.
+    case "OVERVIEW_PANEL": {
+      if (resolved && typeof resolved === "object" && !Array.isArray(resolved)) {
+        return resolved; // pass through as-is — OverviewPanelWidget handles the shape
+      }
+      // Shouldn't happen, but guard gracefully
+      console.warn("[WidgetRenderer] OVERVIEW_PANEL received unexpected data shape:", resolved);
+      return {};
     }
 
     default:

@@ -133,7 +133,7 @@ const App: React.FC = () => {
 
           {response.summary && (
             <div style={{ background: "#fff", borderBottom: "1px solid #E5E7EB", padding: "10px 24px", flexShrink: 0 }}>
-              <p style={{ fontFamily: "'Barlow', sans-serif", fontSize: 13, color: "#111827", margin: 0, lineHeight: 1.6 }}>
+              <p style={{ fontFamily: "'Barlow', sans-serif", fontSize: 15, color: "#111827", margin: 0, lineHeight: 1.6 }}>
                 {response.summary}
               </p>
             </div>
@@ -157,10 +157,10 @@ const App: React.FC = () => {
           }}>
             <span style={{ fontSize: 40 }}>⊟</span>
             <p style={{
-              fontFamily: "'Barlow Condensed', sans-serif", fontSize: 18, fontWeight: 700,
-              color: "#6B7280", margin: 0, letterSpacing: "0.04em",
+              fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700,
+              color: "#313234", margin: 0, letterSpacing: "0.04em",
             }}>SELECT A SAVED DASHBOARD</p>
-            <p style={{ fontFamily: "'Barlow', sans-serif", fontSize: 13, color: "#9CA3AF", margin: 0 }}>
+            <p style={{ fontFamily: "'Barlow', sans-serif", fontSize: 15, color: "#000000", margin: 0 }}>
               Click any query from the panel to run it
             </p>
           </div>
