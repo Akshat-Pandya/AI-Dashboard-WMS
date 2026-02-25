@@ -1,78 +1,93 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { R } from "@/tokens/brand";
 
 interface Props {
-  query:      string;
-  intentName?: string;
-  params?:    Record<string, unknown>;
+  query:        string;
+  intentName?:  string;
+  params?:      Record<string, unknown>;
+  onSaved?:     () => void;   // called after a successful save (not on unsave)
 }
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
-export const SaveButton: React.FC<Props> = ({ query, intentName, params }) => {
-  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+export const SaveButton: React.FC<Props> = ({ query, intentName, params, onSaved }) => {
+  const [status, setStatus]     = useState<"checking" | "unsaved" | "saved">("checking");
+  const [busy, setBusy]         = useState(false);
+  const [hovering, setHovering] = useState(false);
+  const [savedId, setSavedId]   = useState<string | null>(null);
 
-  const handleSave = async () => {
-    if (state === "saving" || state === "saved") return;
-    setState("saving");
+  useEffect(() => {
+    if (!query) return;
+    setStatus("checking");
+    setSavedId(null);
+    fetch(`${BASE_URL}/dashboards/check?query=${encodeURIComponent(query)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setStatus(data.saved ? "saved" : "unsaved");
+        setSavedId(data.id ?? null);
+      })
+      .catch(() => setStatus("unsaved"));
+  }, [query]);
+
+  const handleToggle = async () => {
+    if (busy || status === "checking") return;
+    setBusy(true);
     try {
-      const res = await fetch(`${BASE_URL}/dashboards/save`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query,
-          intent_name: intentName ?? null,
-          params:      params     ?? null,
-          label:       query.slice(0, 80),
-        }),
-      });
-      if (!res.ok) throw new Error("Save failed");
-      setState("saved");
-      // Reset to idle after 2.5s
-      setTimeout(() => setState("idle"), 2500);
+      if (status === "unsaved") {
+        const res = await fetch(`${BASE_URL}/dashboards/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, intent_name: intentName ?? null, params: params ?? null, label: query.slice(0, 80) }),
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setSavedId(data.id);
+        setStatus("saved");
+        onSaved?.();   // notify parent so side panel can refresh
+      } else {
+        if (!savedId) return;
+        const res = await fetch(`${BASE_URL}/dashboards/${savedId}`, { method: "DELETE" });
+        if (!res.ok && res.status !== 404) throw new Error();
+        setSavedId(null);
+        setStatus("unsaved");
+      }
     } catch {
-      setState("error");
-      setTimeout(() => setState("idle"), 2000);
+      // revert silently
+    } finally {
+      setBusy(false);
     }
   };
 
-  const labels = {
-    idle:   "⊟  Save Dashboard",
-    saving: "…  Saving",
-    saved:  "✓  Saved",
-    error:  "✕  Failed",
-  };
+  const isChecking = status === "checking";
+  const isSaved    = status === "saved";
 
-  const colors = {
-    idle:   { bg: "transparent", color: "#6B7280", border: "#E5E7EB" },
-    saving: { bg: "transparent", color: "#9CA3AF", border: "#E5E7EB" },
-    saved:  { bg: "#ECFDF5",     color: "#065F46", border: "#A7F3D0" },
-    error:  { bg: "#FEF2F2",     color: "#991B1B", border: "#FECACA" },
-  };
+  const label = isChecking ? "…"
+    : busy          ? "…"
+    : isSaved && hovering ? "✕  Unsave"
+    : isSaved       ? "✓  Saved"
+    : "⊟  Save";
 
-  const c = colors[state];
+  const bg     = isSaved ? (hovering ? "#FEF2F2" : "#ECFDF5") : "transparent";
+  const color  = isSaved ? (hovering ? "#991B1B" : "#065F46") : "#6B7280";
+  const border = isSaved ? (hovering ? "#FECACA" : "#A7F3D0") : "#E5E7EB";
 
   return (
     <button
-      onClick={handleSave}
-      disabled={state === "saving"}
+      onClick={handleToggle}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      disabled={busy || isChecking}
+      title={isSaved ? "Click to unsave" : "Save this dashboard"}
       style={{
-        background:   c.bg,
-        border:       `1px solid ${c.border}`,
-        borderRadius: 2,
-        padding:      "7px 14px",
-        fontFamily:   "'Barlow', sans-serif",
-        fontSize:     11,
-        fontWeight:   700,
-        color:        c.color,
-        cursor:       state === "saving" ? "not-allowed" : "pointer",
-        letterSpacing: "0.06em",
-        textTransform: "uppercase",
-        transition:   "all 0.2s",
-        whiteSpace:   "nowrap",
+        background: bg, border: `1px solid ${border}`, borderRadius: 2,
+        padding: "7px 14px", fontFamily: "'Barlow', sans-serif",
+        fontSize: 11, fontWeight: 700, color,
+        cursor: busy || isChecking ? "not-allowed" : "pointer",
+        letterSpacing: "0.06em", textTransform: "uppercase",
+        transition: "all 0.18s ease", whiteSpace: "nowrap", minWidth: 90,
       }}
     >
-      {labels[state]}
+      {label}
     </button>
   );
 };

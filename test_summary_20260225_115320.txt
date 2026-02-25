@@ -1,0 +1,79 @@
+WMS AI QUERY TEST SUMMARY
+=========================
+Timestamp  : 20260225_115320
+Endpoint   : http://localhost:8000/query
+Total      : 55
+PASS       : 49
+WARN       : 6  (responded but no widgets / summary had error-words)
+FAIL       : 0
+
+CATEGORY BREAKDOWN
+------------------
+  SIMPLE           total=10   pass/warn=10   fail=0
+  ZONE             total=10   pass/warn=10   fail=0
+  COMPLEX          total=10   pass/warn=10   fail=0
+  PARAM            total=10   pass/warn=10   fail=0
+  AMBIGUOUS        total=5    pass/warn=5    fail=0
+  FREE_SQL         total=5    pass/warn=5    fail=0
+  IRRELEVANT       total=5    pass/warn=5    fail=0
+
+FAILURES & WARNINGS
+-------------------
+[WARN] [PARAM] critical and error alerts only
+  HTTP:200 Intents:warehouse_alerts Widgets:1
+  Summary: There is 1 critical error alert about blocked put-away tasks in Zone B.
+
+[WARN] [FREE_SQL] which carrier has the most shipped orders
+  HTTP:200 Intents:order_status Widgets:0
+  Summary: No orders are currently available.
+
+[WARN] [IRRELEVANT] what is the weather today
+  HTTP:200 Intents:unknown Widgets:0
+  Summary: I tried to answer your question but encountered an error: Only SELECT queries are permitted.
+
+[WARN] [IRRELEVANT] tell me a joke
+  HTTP:200 Intents:unknown Widgets:0
+  Summary: I tried to answer your question but encountered an error: Only SELECT queries are permitted.
+
+[WARN] [IRRELEVANT] write me a python script to sort a list
+  HTTP:200 Intents:unknown Widgets:0
+  Summary: I tried to answer your question but encountered an error: Only SELECT queries are permitted.
+
+[WARN] [IRRELEVANT] what is the capital of France
+  HTTP:200 Intents:unknown Widgets:0
+  Summary: I tried to answer your question but encountered an error: Only SELECT queries are permitted.
+
+
+SLOWEST QUERIES (top 10)
+------------------------
+27547ms  [IRRELEVANT]  what is the capital of France  → unknown
+9034ms  [SIMPLE]  warehouse overview  → warehouse_overview
+8960ms  [PARAM]  list items with zero stock  → low_stock
+8423ms  [COMPLEX]  give me KPIs and warehouse overview together  → kpi_summary, warehouse_overview
+8340ms  [COMPLEX]  which zones are nearly full and what KPIs are off target  → warehouse_overview, kpi_summary
+8110ms  [COMPLEX]  top 5 critical alerts and top 5 low stock items  → warehouse_alerts, low_stock
+8088ms  [AMBIGUOUS]  what needs my attention right now  → warehouse_alerts, kpi_summary
+7905ms  [COMPLEX]  show me blocked tasks and the orders they might be affecting  → blocked_tasks, orders_stuck
+7868ms  [AMBIGUOUS]  is everything okay in the warehouse  → warehouse_overview, warehouse_alerts
+7840ms  [COMPLEX]  show overdue shipments and pending orders  → overdue_asn, order_status
+
+LOW CONFIDENCE RESULTS (top_confidence < 0.7)
+----------------------------------------------
+conf=0.6  [FREE_SQL]  which carrier has the most shipped orders  → order_status
+conf=0.0  [FREE_SQL]  count orders by priority level  → unknown
+
+INTENT DISTRIBUTION
+-------------------
+10x  warehouse_alerts
+7x  warehouse_overview
+6x  unknown
+6x  zone_inventory_compare
+5x  blocked_tasks
+5x  kpi_summary
+5x  low_stock
+5x  order_status
+4x  inventory_lookup
+4x  overdue_asn
+3x  active_tasks
+3x  inbound_activity
+3x  orders_stuck
