@@ -4,6 +4,7 @@ import { TableWidget } from "./widgets/TableWidget";
 import { BarChartWidget } from "./widgets/BarChartWidget";
 import { LineChartWidget } from "./widgets/LineChartWidget";
 import { KPICardsWidget } from "./widgets/KPICardsWidget";
+import { OverviewPanelWidget } from "./widgets/OverviewPanelWidget";
 import type { WidgetConfig } from "@/types";
 
 interface Props {
@@ -12,13 +13,14 @@ interface Props {
 }
 
 const WIDGET_MAP: Record<string, React.FC<{ data: any; props?: any }>> = {
-  ALERT_LIST:         AlertListWidget,
-  TABLE:              TableWidget,
-  BAR_CHART:          BarChartWidget,
+  ALERT_LIST: AlertListWidget,
+  TABLE: TableWidget,
+  BAR_CHART: BarChartWidget,
   ZONE_COMPARE_CHART: BarChartWidget,
-  LINE_CHART:         LineChartWidget,
-  KPI_CARDS:          KPICardsWidget,
-  INBOUND_SUMMARY:    TableWidget,
+  LINE_CHART: LineChartWidget,
+  KPI_CARDS: KPICardsWidget,
+  INBOUND_SUMMARY: TableWidget,
+  OVERVIEW_PANEL: OverviewPanelWidget,
 };
 
 const CHART_COLORS = [
@@ -27,25 +29,48 @@ const CHART_COLORS = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  pending:   "#F59E0B",
-  picking:   "#3B82F6",
-  packed:    "#8B5CF6",
-  shipped:   "#10B981",
+  pending: "#F59E0B",
+  picking: "#3B82F6",
+  packed: "#8B5CF6",
+  shipped: "#10B981",
   cancelled: "#E8001C",
   completed: "#10B981",
-  blocked:   "#E8001C",
-  active:    "#3B82F6",
+  blocked: "#E8001C",
+  active: "#3B82F6",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function resolvePath(obj: Record<string, unknown>, path: string): unknown {
-  return path.split(".").reduce<unknown>((acc, key) => {
+  const parts = path.split(".");
+
+  // Try full path first
+  const full = parts.reduce<unknown>((acc, key) => {
     if (acc && typeof acc === "object" && !Array.isArray(acc)) {
       return (acc as Record<string, unknown>)[key];
     }
     return undefined;
   }, obj);
+
+  if (full !== undefined) return full;
+
+  // If full path failed and has 3+ parts, fall back to parent path
+  if (parts.length >= 3) {
+    const parentPath = parts.slice(0, -1).join(".");
+    const parent = parentPath.split(".").reduce<unknown>((acc, key) => {
+      if (acc && typeof acc === "object" && !Array.isArray(acc)) {
+        return (acc as Record<string, unknown>)[key];
+      }
+      return undefined;
+    }, obj);
+
+    if (parent !== undefined) {
+      console.warn(`[WidgetRenderer] "${path}" not found — falling back to "${parentPath}"`);
+      return parent;
+    }
+  }
+
+  return undefined;
 }
 
 function toTableData(raw: unknown): { columns: string[]; rows: unknown[][] } | null {
@@ -73,9 +98,9 @@ function toBarChartData(
   const first = raw[0];
   if (typeof first !== "object" || first === null) return null;
 
-  const allKeys    = Object.keys(first as object);
+  const allKeys = Object.keys(first as object);
   const numericKeys = allKeys.filter((k) => isNumericValue((first as Record<string, unknown>)[k]));
-  const keys       = propsKeys ?? numericKeys;
+  const keys = propsKeys ?? numericKeys;
 
   if (keys.length === 0) {
     const fallbackKeys = allKeys.slice(1);
@@ -91,13 +116,13 @@ function toBarChartData(
   return { bars, keys, colors: keys.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]) };
 }
 
-/** Convert a plain { key: number } map → bars array  e.g. { pending:2, picking:4 } */
+/** Convert { pending:2, picking:4 } → bars array */
 function numericObjectToBars(obj: Record<string, unknown>): { bars: unknown[]; keys: string[]; colors: string[] } | null {
   const entries = Object.entries(obj);
   if (entries.length === 0) return null;
   if (!entries.every(([, v]) => typeof v === "number" || (typeof v === "string" && !isNaN(Number(v))))) return null;
 
-  const bars   = entries.map(([name, value]) => ({ name, count: Number(value) }));
+  const bars = entries.map(([name, value]) => ({ name, count: Number(value) }));
   const colors = bars.map((b) => STATUS_COLORS[(b as any).name] ?? CHART_COLORS[0]);
   return { bars, keys: ["count"], colors };
 }
@@ -113,7 +138,7 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
         return resolved;
       if (Array.isArray(resolved)) return toTableData(resolved) ?? resolved;
       if (resolved && typeof resolved === "object") {
-        const obj      = resolved as Record<string, unknown>;
+        const obj = resolved as Record<string, unknown>;
         const arrayKey = Object.keys(obj).find((k) => Array.isArray(obj[k]));
         if (arrayKey) return toTableData(obj[arrayKey] as unknown[]) ?? resolved;
       }
@@ -127,7 +152,6 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
 
     case "BAR_CHART":
     case "ZONE_COMPARE_CHART": {
-      // 1. Already shaped { bars, keys, colors }
       if (
         resolved && typeof resolved === "object" && !Array.isArray(resolved) &&
         "bars" in (resolved as object) && "keys" in (resolved as object) &&
@@ -136,25 +160,22 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
 
       const propsKeys = Array.isArray(props?.keys) ? (props!.keys as string[]) : undefined;
 
-      // 2. Array of objects
-      if (Array.isArray(resolved)) {
-        return toBarChartData(resolved, propsKeys) ?? resolved;
-      }
+      if (Array.isArray(resolved)) return toBarChartData(resolved, propsKeys) ?? resolved;
 
       if (resolved && typeof resolved === "object") {
         const obj = resolved as Record<string, unknown>;
 
-        // 3. Plain numeric object: { pending:2, picking:4, ... } ← THIS is the order status case
+        // Plain numeric map e.g. { pending:2, picking:4 }
         const directNumeric = numericObjectToBars(obj);
         if (directNumeric) return directNumeric;
 
-        // 4. Nested by_status object: { status, count, orders, by_status:{...} }
+        // Nested by_status
         if (obj.by_status && typeof obj.by_status === "object" && !Array.isArray(obj.by_status)) {
           const nested = numericObjectToBars(obj.by_status as Record<string, unknown>);
           if (nested) return nested;
         }
 
-        // 5. Nested array key
+        // Nested array key
         const arrayKey = Object.keys(obj).find((k) => Array.isArray(obj[k]));
         if (arrayKey) return toBarChartData(obj[arrayKey] as unknown[], propsKeys) ?? resolved;
       }
@@ -173,8 +194,8 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
 
       const toLineData = (arr: unknown[]) => {
         if (arr.length === 0) return null;
-        const first      = arr[0] as Record<string, unknown>;
-        const allKeys    = Object.keys(first);
+        const first = arr[0] as Record<string, unknown>;
+        const allKeys = Object.keys(first);
         const numericKeys = propsKeys ?? allKeys.filter((k) => {
           const v = first[k];
           if (typeof v === "boolean") return false;
@@ -186,10 +207,10 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
         const dateKey = allKeys.find((k) => typeof first[k] === "string" && /date|time|timestamp|created|updated/i.test(k));
         let points: unknown[] = dateKey
           ? [...arr].sort((a, b) => {
-              const av = (a as Record<string, unknown>)[dateKey] as string;
-              const bv = (b as Record<string, unknown>)[dateKey] as string;
-              return av < bv ? -1 : av > bv ? 1 : 0;
-            })
+            const av = (a as Record<string, unknown>)[dateKey] as string;
+            const bv = (b as Record<string, unknown>)[dateKey] as string;
+            return av < bv ? -1 : av > bv ? 1 : 0;
+          })
           : arr;
         points = points.map((item) => {
           const obj = { ...(item as Record<string, unknown>) };
@@ -201,7 +222,7 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
 
       if (Array.isArray(resolved)) { const r = toLineData(resolved); if (r) return r; }
       if (resolved && typeof resolved === "object") {
-        const obj      = resolved as Record<string, unknown>;
+        const obj = resolved as Record<string, unknown>;
         const arrayKey = Object.keys(obj).find((k) => Array.isArray(obj[k]));
         if (arrayKey) { const r = toLineData(obj[arrayKey] as unknown[]); if (r) return r; }
       }
@@ -212,6 +233,12 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
       if (resolved && typeof resolved === "object" && !Array.isArray(resolved)) return resolved;
       if (Array.isArray(resolved)) return { kpis: resolved };
       return resolved;
+    }
+
+    case "OVERVIEW_PANEL": {
+      if (resolved && typeof resolved === "object" && !Array.isArray(resolved)) return resolved;
+      console.warn("[WidgetRenderer] OVERVIEW_PANEL received unexpected data shape:", resolved);
+      return {};
     }
 
     default:
