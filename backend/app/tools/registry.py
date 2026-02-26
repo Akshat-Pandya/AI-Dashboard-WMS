@@ -1,7 +1,6 @@
 """
 registry.py
 Maps every Intent enum value to the callable tool function that serves it.
-Add a new intent here and it is automatically picked up by the orchestrator.
 """
 from typing import Callable, Dict
 
@@ -9,7 +8,7 @@ from app.core.schemas import Intent
 
 from app.tools.alerts.tools     import get_alerts
 from app.tools.inventory.tools  import get_low_stock_items, get_inventory_lookup, compare_zones
-from app.tools.orders.tools     import get_orders_by_status, get_stuck_orders
+from app.tools.orders.tools     import get_all_orders, get_orders_by_status, get_stuck_orders
 from app.tools.tasks.tools      import get_active_tasks, get_blocked_tasks
 from app.tools.inbound.tools    import get_inbound_activity, get_overdue_asns
 from app.tools.kpis.tools       import get_kpi_summary
@@ -18,9 +17,9 @@ from app.tools.overview.tools   import get_warehouse_overview
 INTENT_TOOL_MAP: Dict[Intent, Callable] = {
     Intent.WAREHOUSE_ALERTS:       get_alerts,
     Intent.LOW_STOCK:              get_low_stock_items,
-    Intent.INVENTORY_LOOKUP:       get_inventory_lookup,   # ← was get_inventory_by_zone
-    Intent.ZONE_INVENTORY_COMPARE: compare_zones,          # ← was get_inventory_by_zone
-    Intent.ORDER_STATUS:           get_orders_by_status,
+    Intent.INVENTORY_LOOKUP:       get_inventory_lookup,
+    Intent.ZONE_INVENTORY_COMPARE: compare_zones,
+    Intent.ORDER_STATUS:           get_all_orders,        # ← was get_orders_by_status (returned empty without status param)
     Intent.ORDERS_STUCK:           get_stuck_orders,
     Intent.ACTIVE_TASKS:           get_active_tasks,
     Intent.BLOCKED_TASKS:          get_blocked_tasks,

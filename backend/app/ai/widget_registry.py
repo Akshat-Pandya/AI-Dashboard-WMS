@@ -6,12 +6,6 @@ TO ADD A NEW WIDGET:
   1. Add an entry to WIDGET_REGISTRY below
   2. Add the component to WIDGET_MAP in frontend/src/components/WidgetRenderer.tsx
   That's it — the prompt, fallback renderer, and catalogue update automatically.
-
-Fields:
-  type        : widget type string — must match WIDGET_MAP key in WidgetRenderer.tsx
-  use_for     : plain-English description shown to the LLM in the prompt
-  data_key    : example/default dot-path into tool_outputs (e.g. "alerts.alerts")
-  fallback_for: top-level tool_output keys this widget handles when LLM fails
 """
 from typing import Any, Dict, List
 
@@ -24,8 +18,8 @@ WIDGET_REGISTRY: List[Dict[str, Any]] = [
     },
     {
         "type":         "TABLE",
-        "use_for":      "generic tabular data — orders, tasks, ASNs, inventory items",
-        "data_key":     "low_stock.items",
+        "use_for":      "showing lists of orders, tasks, ASNs, inventory items — any row-based data. Use TABLE when user asks to show/list/get orders or items.",
+        "data_key":     "orders.orders",
         "fallback_for": ["low_stock", "inventory", "stuck_orders",
                          "active_tasks", "blocked_tasks", "overdue_asn", "orders"],
     },
@@ -37,8 +31,8 @@ WIDGET_REGISTRY: List[Dict[str, Any]] = [
     },
     {
         "type":         "BAR_CHART",
-        "use_for":      "comparing numeric values across categories (non-zone)",
-        "data_key":     "(relevant key)",
+        "use_for":      "comparing numeric values across categories. ONLY use when user explicitly asks for a chart, distribution, breakdown, or comparison by category. Do NOT use for listing orders or items — use TABLE instead.",
+        "data_key":     "orders.by_status",
         "fallback_for": [],
     },
     {
@@ -60,14 +54,6 @@ WIDGET_REGISTRY: List[Dict[str, Any]] = [
         "fallback_for": ["inbound"],
     },
     {
-        # ── CRITICAL NOTE FOR LLM ────────────────────────────────────────────
-        # overview data is a NESTED OBJECT (not a list).
-        # Structure: { inventory: {...}, orders: {...}, tasks: {...},
-        #              alerts: {...}, kpis: {...}, zones: {...} }
-        # data_key must be exactly "overview" — do NOT go deeper.
-        # ALWAYS include this widget when overview data is present.
-        # NEVER skip it just because the data has no top-level array.
-        # ─────────────────────────────────────────────────────────────────────
         "type":         "OVERVIEW_PANEL",
         "use_for":      (
             "high-level warehouse overview, all-up metrics. "
@@ -81,7 +67,6 @@ WIDGET_REGISTRY: List[Dict[str, Any]] = [
 ]
 
 # ── Derived lookup: tool_output key → (widget_type, data_key) ─────────────────
-# Auto-built from fallback_for — do not edit manually.
 FALLBACK_MAP: Dict[str, tuple] = {}
 for _w in WIDGET_REGISTRY:
     for _k in _w["fallback_for"]:

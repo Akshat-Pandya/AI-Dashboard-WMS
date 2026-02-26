@@ -13,6 +13,12 @@ from app.core.schemas import IntentScore
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL_NAME = "qwen2.5:7b"
 
+# ── Valid values — LLM must only return these for status ─────────────────────
+VALID_ORDER_STATUSES = {"pending", "picking", "packed", "shipped", "cancelled"}
+VALID_TASK_STATUSES  = {"pending", "active", "blocked", "completed"}
+VALID_ASN_STATUSES   = {"expected", "in_transit", "receiving", "received", "overdue"}
+VALID_SEVERITIES     = {"critical", "high", "warning", "medium", "info", "low"}
+
 SYSTEM_PROMPT = """
 You are a parameter extraction engine for a Warehouse Management System.
 
@@ -22,22 +28,28 @@ EXTRACTABLE PARAMETERS:
 - zone       : single zone name for lookup (e.g. "Zone A", "Zone B")
 - zones      : list of zone names for comparison (e.g. ["Zone A", "Zone B"])
 - sku        : product SKU code mentioned
-- severity   : alert severity ("critical", "warning", "error", "info")
-- status     : order/task/ASN status filter
+- severity   : alert severity — ONLY one of: critical, high, warning, medium, info, low
+- status     : ONLY extract if an explicit status word is mentioned.
+               Valid order statuses: pending, picking, packed, shipped, cancelled
+               Valid task statuses:  pending, active, blocked, completed
+               Do NOT extract adjectives like "outbound", "inbound", "all" as status.
 - limit      : number of results (e.g. "top 10" → 10)
 - hours_threshold: hours for stuck/overdue detection
 
 ZONE NORMALIZATION RULES:
 - Always return zones in "Zone X" format with capital Z and uppercase letter
-- "zone a" → "Zone A"
-- "zone b" → "Zone B"  
-- "Zone A" → "Zone A"
-- "A" → "Zone A"
-- "cold storage" → "cold storage" (keep as-is if not a letter zone)
+- "zone a" → "Zone A", "A" → "Zone A"
+- Keep non-letter zones as-is (e.g. "cold storage")
+
+CRITICAL STATUS RULE:
+- "outbound" is NOT a status — it describes the table/type of order, not a status value
+- "inbound" is NOT a status
+- "all" is NOT a status
+- Only extract status if the query contains an explicit status word like "pending orders", "shipped orders", "picking"
+- If the query says "show all orders" or "show outbound orders" with no status word → return {}
 
 RULES:
-- Only extract parameters explicitly mentioned in the query
-- If a parameter is not mentioned, do not include it
+- Only extract parameters explicitly mentioned
 - Return empty dict {} if no parameters found
 - Return STRICT JSON only — no prose, no markdown fences
 
@@ -56,6 +68,18 @@ Output: {"hours_threshold": 48}
 
 Query: "show all blocked tasks"
 Output: {}
+
+Query: "show all outbound orders"
+Output: {}
+
+Query: "show outbound orders"
+Output: {}
+
+Query: "show pending orders"
+Output: {"status": "pending"}
+
+Query: "show shipped orders"
+Output: {"status": "shipped"}
 
 Query: "compare all zones"
 Output: {}
@@ -90,8 +114,9 @@ Output:"""
         print("📝 Raw param output:", raw)
 
         params = _extract_json(raw)
+        params = _validate_and_clean(params)
 
-        # Safety normalization in case LLM doesn't follow format perfectly
+        # Zone normalization
         if "zone" in params:
             params["zone"] = _normalize_zone(str(params["zone"]))
         if "zones" in params and isinstance(params["zones"], list):
@@ -105,32 +130,41 @@ Output:"""
         return {}
 
 
+def _validate_and_clean(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Post-extraction guard — removes any params that don't match known valid values.
+    Prevents LLM hallucinations like status="outbound" slipping through.
+    """
+    cleaned = dict(params)
+
+    # Drop invalid status values
+    if "status" in cleaned:
+        s = str(cleaned["status"]).strip().lower()
+        all_valid = VALID_ORDER_STATUSES | VALID_TASK_STATUSES | VALID_ASN_STATUSES
+        if s not in all_valid:
+            print(f"⚠️  Dropping invalid status={s!r} (not in valid list)")
+            del cleaned["status"]
+
+    # Drop invalid severity values
+    if "severity" in cleaned:
+        sv = str(cleaned["severity"]).strip().lower()
+        if sv not in VALID_SEVERITIES:
+            print(f"⚠️  Dropping invalid severity={sv!r}")
+            del cleaned["severity"]
+
+    return cleaned
+
+
 def _normalize_zone(zone: str) -> str:
-    """
-    Normalizes zone names to match DB format: "Zone A", "Zone B", etc.
-
-    "A"      → "Zone A"
-    "zone a" → "Zone A"
-    "Zone A" → "Zone A"
-    "Zone b" → "Zone B"
-    "cold storage" → "cold storage"  (non-letter zones kept as-is)
-    """
     z = zone.strip()
-
-    # Already in "Zone X" format — just normalize case
     match = re.match(r"(?i)^zone[\s\-_]+(.+)$", z)
     if match:
         suffix = match.group(1).strip()
-        # Single letter → uppercase
         if len(suffix) == 1:
             suffix = suffix.upper()
         return f"Zone {suffix}"
-
-    # Just a single letter like "A", "b"
     if len(z) == 1 and z.isalpha():
         return f"Zone {z.upper()}"
-
-    # Multi-word non-standard zone — return as-is
     return z
 
 

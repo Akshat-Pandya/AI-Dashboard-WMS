@@ -1,0 +1,111 @@
+WMS AI QUERY TEST SUMMARY
+=========================
+Timestamp  : 20260225_152910
+Endpoint   : http://localhost:8000/query
+Total      : 55
+PASS       : 41
+WARN       : 14  (responded but no widgets / summary had error-words)
+FAIL       : 0
+
+CATEGORY BREAKDOWN
+------------------
+  SIMPLE           total=10   pass/warn=10   fail=0
+  ZONE             total=10   pass/warn=10   fail=0
+  COMPLEX          total=10   pass/warn=10   fail=0
+  PARAM            total=10   pass/warn=10   fail=0
+  AMBIGUOUS        total=5    pass/warn=5    fail=0
+  FREE_SQL         total=5    pass/warn=5    fail=0
+  IRRELEVANT       total=5    pass/warn=5    fail=0
+
+FAILURES & WARNINGS
+-------------------
+[WARN] [SIMPLE] show all warehouse alerts
+  HTTP:200 Intents:warehouse_alerts Widgets:1
+  Summary: 5 alerts total, including 1 critical alert about Zone C temperature and 1 error alert regarding blocked tasks in Zone B.
+
+[WARN] [PARAM] critical and error alerts only
+  HTTP:200 Intents:warehouse_alerts Widgets:1
+  Summary: 1 critical error alert about blocked put-away tasks in Zone B.
+
+[WARN] [AMBIGUOUS] anything urgent I should know about
+  HTTP:200 Intents:warehouse_alerts, active_tasks Widgets:2
+  Summary: There are 5 alerts, including 1 critical alert about Zone C temperature and 2 error alerts related to tasks in Zone B.
+
+[WARN] [AMBIGUOUS] what needs my attention right now
+  HTTP:200 Intents:warehouse_alerts, active_tasks Widgets:2
+  Summary: 5 alerts including a critical issue in Zone C and an error with blocked tasks in Zone B.
+
+[WARN] [FREE_SQL] how many tasks were completed in Zone A
+  HTTP:200 Intents:unsupported_warehouse_query Widgets:0
+  Summary: 
+
+[WARN] [FREE_SQL] which carrier has the most shipped orders
+  HTTP:200 Intents:unsupported_warehouse_query Widgets:0
+  Summary: 
+
+[WARN] [FREE_SQL] average estimated minutes for pick tasks
+  HTTP:200 Intents:unsupported_warehouse_query Widgets:0
+  Summary: 
+
+[WARN] [FREE_SQL] count orders by priority level
+  HTTP:200 Intents:unsupported_warehouse_query Widgets:0
+  Summary: 
+
+[WARN] [FREE_SQL] which dock received the most units
+  HTTP:200 Intents:unsupported_warehouse_query Widgets:0
+  Summary: 
+
+[WARN] [IRRELEVANT] what is the weather today
+  HTTP:200 Intents:irrelevant_query Widgets:0
+  Summary: I can only answer questions about warehouse operations — inventory, orders, tasks, shipments, alerts, and KPIs.
+
+[WARN] [IRRELEVANT] tell me a joke
+  HTTP:200 Intents:irrelevant_query Widgets:0
+  Summary: I can only answer questions about warehouse operations — inventory, orders, tasks, shipments, alerts, and KPIs.
+
+[WARN] [IRRELEVANT] who won the world cup
+  HTTP:200 Intents:irrelevant_query Widgets:0
+  Summary: I can only answer questions about warehouse operations — inventory, orders, tasks, shipments, alerts, and KPIs.
+
+[WARN] [IRRELEVANT] write me a python script to sort a list
+  HTTP:200 Intents:irrelevant_query Widgets:0
+  Summary: I can only answer questions about warehouse operations — inventory, orders, tasks, shipments, alerts, and KPIs.
+
+[WARN] [IRRELEVANT] what is the capital of France
+  HTTP:200 Intents:irrelevant_query Widgets:0
+  Summary: I can only answer questions about warehouse operations — inventory, orders, tasks, shipments, alerts, and KPIs.
+
+
+SLOWEST QUERIES (top 10)
+------------------------
+13705ms  [SIMPLE]  show all warehouse alerts  → warehouse_alerts
+10541ms  [ZONE]  show me inventory across all zones  → zone_inventory_compare, inventory_lookup
+10044ms  [AMBIGUOUS]  is everything okay in the warehouse  → warehouse_overview, warehouse_alerts
+9671ms  [COMPLEX]  give me KPIs and warehouse overview together  → kpi_summary, warehouse_overview
+9627ms  [AMBIGUOUS]  how is the warehouse doing  → warehouse_overview
+9552ms  [COMPLEX]  what are the stuck orders and low stock items right now  → orders_stuck, low_stock
+9418ms  [PARAM]  show urgent priority tasks  → blocked_tasks, active_tasks
+9280ms  [AMBIGUOUS]  summarise today's operations  → warehouse_overview, order_status
+9233ms  [COMPLEX]  top 5 critical alerts and top 5 low stock items  → warehouse_alerts, low_stock
+9186ms  [SIMPLE]  what are the current KPIs  → kpi_summary
+
+LOW CONFIDENCE RESULTS (top_confidence < 0.7)
+----------------------------------------------
+conf=0.5  [FREE_SQL]  average estimated minutes for pick tasks  → unsupported_warehouse_query
+
+INTENT DISTRIBUTION
+-------------------
+11x  warehouse_alerts
+6x  order_status
+6x  warehouse_overview
+6x  zone_inventory_compare
+5x  active_tasks
+5x  blocked_tasks
+5x  inventory_lookup
+5x  irrelevant_query
+5x  low_stock
+5x  unsupported_warehouse_query
+4x  overdue_asn
+3x  inbound_activity
+3x  kpi_summary
+3x  orders_stuck

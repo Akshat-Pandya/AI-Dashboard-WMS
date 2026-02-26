@@ -4,7 +4,6 @@ import { TableWidget } from "./widgets/TableWidget";
 import { BarChartWidget } from "./widgets/BarChartWidget";
 import { LineChartWidget } from "./widgets/LineChartWidget";
 import { KPICardsWidget } from "./widgets/KPICardsWidget";
-import { OverviewPanelWidget } from "./widgets/OverviewPanelWidget"; // ← NEW
 import type { WidgetConfig } from "@/types";
 
 interface Props {
@@ -20,7 +19,6 @@ const WIDGET_MAP: Record<string, React.FC<{ data: any; props?: any }>> = {
   LINE_CHART:         LineChartWidget,
   KPI_CARDS:          KPICardsWidget,
   INBOUND_SUMMARY:    TableWidget,
-  OVERVIEW_PANEL:     OverviewPanelWidget, // ← NEW — was missing, caused blank render
 };
 
 const CHART_COLORS = [
@@ -28,38 +26,26 @@ const CHART_COLORS = [
   "#8B5CF6", "#EC4899", "#06B6D4", "#84CC16",
 ];
 
+const STATUS_COLORS: Record<string, string> = {
+  pending:   "#F59E0B",
+  picking:   "#3B82F6",
+  packed:    "#8B5CF6",
+  shipped:   "#10B981",
+  cancelled: "#E8001C",
+  completed: "#10B981",
+  blocked:   "#E8001C",
+  active:    "#3B82F6",
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function resolvePath(obj: Record<string, unknown>, path: string): unknown {
-  const parts = path.split(".");
-
-  // Try full path first
-  const full = parts.reduce<unknown>((acc, key) => {
+  return path.split(".").reduce<unknown>((acc, key) => {
     if (acc && typeof acc === "object" && !Array.isArray(acc)) {
       return (acc as Record<string, unknown>)[key];
     }
     return undefined;
   }, obj);
-
-  if (full !== undefined) return full;
-
-  // If full path failed and has 3+ parts, fall back to parent path
-  if (parts.length >= 3) {
-    const parentPath = parts.slice(0, -1).join(".");
-    const parent = parentPath.split(".").reduce<unknown>((acc, key) => {
-      if (acc && typeof acc === "object" && !Array.isArray(acc)) {
-        return (acc as Record<string, unknown>)[key];
-      }
-      return undefined;
-    }, obj);
-
-    if (parent !== undefined) {
-      console.warn(`[WidgetRenderer] "${path}" not found — falling back to "${parentPath}"`);
-      return parent;
-    }
-  }
-
-  return undefined;
 }
 
 function toTableData(raw: unknown): { columns: string[]; rows: unknown[][] } | null {
@@ -79,10 +65,6 @@ function isNumericValue(v: unknown): boolean {
   return false;
 }
 
-/**
- * Converts array of objects → BarChartData.
- * Handles numeric values stored as strings (common from MySQL).
- */
 function toBarChartData(
   raw: unknown[],
   propsKeys?: string[]
@@ -91,31 +73,33 @@ function toBarChartData(
   const first = raw[0];
   if (typeof first !== "object" || first === null) return null;
 
-  const allKeys = Object.keys(first as object);
-
-  const numericKeys = allKeys.filter((k) => {
-    const val = (first as Record<string, unknown>)[k];
-    return isNumericValue(val);
-  });
-
-  const keys = propsKeys ?? numericKeys;
+  const allKeys    = Object.keys(first as object);
+  const numericKeys = allKeys.filter((k) => isNumericValue((first as Record<string, unknown>)[k]));
+  const keys       = propsKeys ?? numericKeys;
 
   if (keys.length === 0) {
     const fallbackKeys = allKeys.slice(1);
-    const colors = fallbackKeys.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
-    return { bars: raw, keys: fallbackKeys, colors };
+    return { bars: raw, keys: fallbackKeys, colors: fallbackKeys.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]) };
   }
 
   const bars = raw.map((item) => {
     const obj = { ...(item as Record<string, unknown>) };
-    keys.forEach((k) => {
-      if (typeof obj[k] === "string") obj[k] = Number(obj[k]);
-    });
+    keys.forEach((k) => { if (typeof obj[k] === "string") obj[k] = Number(obj[k]); });
     return obj;
   });
 
-  const colors = keys.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
-  return { bars, keys, colors };
+  return { bars, keys, colors: keys.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]) };
+}
+
+/** Convert a plain { key: number } map → bars array  e.g. { pending:2, picking:4 } */
+function numericObjectToBars(obj: Record<string, unknown>): { bars: unknown[]; keys: string[]; colors: string[] } | null {
+  const entries = Object.entries(obj);
+  if (entries.length === 0) return null;
+  if (!entries.every(([, v]) => typeof v === "number" || (typeof v === "string" && !isNaN(Number(v))))) return null;
+
+  const bars   = entries.map(([name, value]) => ({ name, count: Number(value) }));
+  const colors = bars.map((b) => STATUS_COLORS[(b as any).name] ?? CHART_COLORS[0]);
+  return { bars, keys: ["count"], colors };
 }
 
 // ─── Data adapter ─────────────────────────────────────────────────────────────
@@ -125,15 +109,11 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
 
     case "TABLE":
     case "INBOUND_SUMMARY": {
-      if (
-        resolved &&
-        typeof resolved === "object" &&
-        "columns" in (resolved as object) &&
-        "rows" in (resolved as object)
-      ) return resolved;
+      if (resolved && typeof resolved === "object" && "columns" in (resolved as object) && "rows" in (resolved as object))
+        return resolved;
       if (Array.isArray(resolved)) return toTableData(resolved) ?? resolved;
       if (resolved && typeof resolved === "object") {
-        const obj = resolved as Record<string, unknown>;
+        const obj      = resolved as Record<string, unknown>;
         const arrayKey = Object.keys(obj).find((k) => Array.isArray(obj[k]));
         if (arrayKey) return toTableData(obj[arrayKey] as unknown[]) ?? resolved;
       }
@@ -147,35 +127,45 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
 
     case "BAR_CHART":
     case "ZONE_COMPARE_CHART": {
+      // 1. Already shaped { bars, keys, colors }
       if (
-        resolved &&
-        typeof resolved === "object" &&
-        !Array.isArray(resolved) &&
-        "bars" in (resolved as object) &&
-        "keys" in (resolved as object) &&
+        resolved && typeof resolved === "object" && !Array.isArray(resolved) &&
+        "bars" in (resolved as object) && "keys" in (resolved as object) &&
         Array.isArray((resolved as any).keys)
       ) return resolved;
 
       const propsKeys = Array.isArray(props?.keys) ? (props!.keys as string[]) : undefined;
 
+      // 2. Array of objects
       if (Array.isArray(resolved)) {
         return toBarChartData(resolved, propsKeys) ?? resolved;
       }
+
       if (resolved && typeof resolved === "object") {
         const obj = resolved as Record<string, unknown>;
+
+        // 3. Plain numeric object: { pending:2, picking:4, ... } ← THIS is the order status case
+        const directNumeric = numericObjectToBars(obj);
+        if (directNumeric) return directNumeric;
+
+        // 4. Nested by_status object: { status, count, orders, by_status:{...} }
+        if (obj.by_status && typeof obj.by_status === "object" && !Array.isArray(obj.by_status)) {
+          const nested = numericObjectToBars(obj.by_status as Record<string, unknown>);
+          if (nested) return nested;
+        }
+
+        // 5. Nested array key
         const arrayKey = Object.keys(obj).find((k) => Array.isArray(obj[k]));
         if (arrayKey) return toBarChartData(obj[arrayKey] as unknown[], propsKeys) ?? resolved;
       }
+
       return resolved;
     }
 
     case "LINE_CHART": {
       if (
-        resolved &&
-        typeof resolved === "object" &&
-        !Array.isArray(resolved) &&
-        "points" in (resolved as object) &&
-        "keys" in (resolved as object) &&
+        resolved && typeof resolved === "object" && !Array.isArray(resolved) &&
+        "points" in (resolved as object) && "keys" in (resolved as object) &&
         Array.isArray((resolved as any).keys)
       ) return resolved;
 
@@ -183,8 +173,8 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
 
       const toLineData = (arr: unknown[]) => {
         if (arr.length === 0) return null;
-        const first = arr[0] as Record<string, unknown>;
-        const allKeys = Object.keys(first);
+        const first      = arr[0] as Record<string, unknown>;
+        const allKeys    = Object.keys(first);
         const numericKeys = propsKeys ?? allKeys.filter((k) => {
           const v = first[k];
           if (typeof v === "boolean") return false;
@@ -193,9 +183,7 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
           return false;
         });
         if (numericKeys.length === 0) return null;
-        const dateKey = allKeys.find(
-          (k) => typeof first[k] === "string" && /date|time|timestamp|created|updated/i.test(k)
-        );
+        const dateKey = allKeys.find((k) => typeof first[k] === "string" && /date|time|timestamp|created|updated/i.test(k));
         let points: unknown[] = dateKey
           ? [...arr].sort((a, b) => {
               const av = (a as Record<string, unknown>)[dateKey] as string;
@@ -208,24 +196,14 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
           numericKeys.forEach((k) => { if (typeof obj[k] === "string") obj[k] = Number(obj[k]); });
           return obj;
         });
-        return {
-          points,
-          keys: numericKeys,
-          colors: numericKeys.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
-        };
+        return { points, keys: numericKeys, colors: numericKeys.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]) };
       };
 
-      if (Array.isArray(resolved)) {
-        const r = toLineData(resolved);
-        if (r) return r;
-      }
+      if (Array.isArray(resolved)) { const r = toLineData(resolved); if (r) return r; }
       if (resolved && typeof resolved === "object") {
-        const obj = resolved as Record<string, unknown>;
+        const obj      = resolved as Record<string, unknown>;
         const arrayKey = Object.keys(obj).find((k) => Array.isArray(obj[k]));
-        if (arrayKey) {
-          const r = toLineData(obj[arrayKey] as unknown[]);
-          if (r) return r;
-        }
+        if (arrayKey) { const r = toLineData(obj[arrayKey] as unknown[]); if (r) return r; }
       }
       return { points: [], keys: [], colors: [] };
     }
@@ -234,20 +212,6 @@ function adaptData(type: string, resolved: unknown, props?: Record<string, unkno
       if (resolved && typeof resolved === "object" && !Array.isArray(resolved)) return resolved;
       if (Array.isArray(resolved)) return { kpis: resolved };
       return resolved;
-    }
-
-    // ── OVERVIEW_PANEL ─────────────────────────────────────────────────────────
-    // The backend sends a nested object:
-    //   { inventory: {...}, orders: {...}, tasks: {...}, alerts: {...}, kpis: {...}, zones: {...} }
-    // OverviewPanelWidget reads it directly — no transformation needed.
-    // We still validate it's an object and not an accidental array.
-    case "OVERVIEW_PANEL": {
-      if (resolved && typeof resolved === "object" && !Array.isArray(resolved)) {
-        return resolved; // pass through as-is — OverviewPanelWidget handles the shape
-      }
-      // Shouldn't happen, but guard gracefully
-      console.warn("[WidgetRenderer] OVERVIEW_PANEL received unexpected data shape:", resolved);
-      return {};
     }
 
     default:
@@ -273,10 +237,7 @@ export const WidgetRenderer: React.FC<Props> = ({ widgets, data }) => {
         const resolved = resolvePath(data, widget.data_key);
 
         if (resolved === undefined) {
-          console.warn(
-            `[WidgetRenderer] data_key "${widget.data_key}" not found in data`,
-            data
-          );
+          console.warn(`[WidgetRenderer] data_key "${widget.data_key}" not found in data`, data);
           return null;
         }
 
@@ -287,12 +248,9 @@ export const WidgetRenderer: React.FC<Props> = ({ widgets, data }) => {
             {widget.title && (
               <h3 style={{
                 fontFamily: "'Barlow Condensed', sans-serif",
-                fontSize: 14,
-                fontWeight: 700,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "#6B7280",
-                margin: "0 0 10px 0",
+                fontSize: 14, fontWeight: 700,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+                color: "#6B7280", margin: "0 0 10px 0",
               }}>
                 {widget.title}
               </h3>
