@@ -1,28 +1,29 @@
 import React, { useState } from "react";
-import { ChatPanel }        from "./components/ChatPanel";
-import { ResultsPanel }     from "./components/ResultsPanel";
-import { IntentTabs }       from "./components/IntentTabs";
+import { ChatPanel } from "./components/ChatPanel";
+import { ResultsPanel } from "./components/ResultsPanel";
+import { IntentTabs } from "./components/IntentTabs";
 import { IntentTabContent } from "./components/IntentTabContent";
-import { AllIntentsPanel }  from "./components/AllIntentsPanel";
-import { NavDrawer }        from "./components/NavDrawer";
-import { SaveButton }       from "./components/SaveButton";
-import { queryWMS }         from "./services/api";
-import { buildTabResults }  from "./services/buildTabResults";
+import { AllIntentsPanel } from "./components/AllIntentsPanel";
+import { NavDrawer } from "./components/NavDrawer";
+import { QueryLoadingState } from "@/components/QueryLoadingState";
+import { SaveButton } from "./components/SaveButton";
+import { queryWMS } from "./services/api";
+import { buildTabResults } from "./services/buildTabResults";
 import type { WMSResponse } from "./types";
-import { R }                from "./tokens/brand";
+import { R } from "./tokens/brand";
 
 type Page = "query" | "saved";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 const App: React.FC = () => {
-  const [response, setResponse]               = useState<WMSResponse | null>(null);
-  const [loading, setLoading]                 = useState(false);
-  const [history, setHistory]                 = useState<string[]>([]);
-  const [activeQuery, setActiveQuery]         = useState<string>("");   // ← tracks which query is active
-  const [activeTab, setActiveTab]             = useState(0);
-  const [drawerOpen, setDrawerOpen]           = useState(false);
-  const [page, setPage]                       = useState<Page>("query");
+  const [response, setResponse] = useState<WMSResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
+  const [activeQuery, setActiveQuery] = useState<string>("");   // ← tracks which query is active
+  const [activeTab, setActiveTab] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [page, setPage] = useState<Page>("query");
   const [savedRefreshKey, setSavedRefreshKey] = useState(0);
 
   // ── FIX 1: only add to history if query is new ────────────────────────────
@@ -76,13 +77,13 @@ const App: React.FC = () => {
     }
   };
 
-  const results         = response?.resultsByIntent ?? [];
-  const hasResults      = results.length > 0;
-  const tabLabels       = hasResults
+  const results = response?.resultsByIntent ?? [];
+  const hasResults = results.length > 0;
+  const tabLabels = hasResults
     ? [...results.map((r) => `${r.intent.replace(/_/g, " ")} (${Math.round(r.confidence * 100)}%)`), "All Intents"]
     : [];
   const isAllIntentsTab = hasResults && activeTab === tabLabels.length - 1;
-  const activeResult    = !isAllIntentsTab ? results[activeTab] : undefined;
+  const activeResult = !isAllIntentsTab ? results[activeTab] : undefined;
 
   const HamburgerBtn = () => (
     <button
@@ -96,7 +97,7 @@ const App: React.FC = () => {
       }}
       aria-label="Open navigation"
     >
-      {[0,1,2].map((i) => (
+      {[0, 1, 2].map((i) => (
         <span key={i} style={{ display: "block", width: 16, height: 2, background: "#9CA3AF", borderRadius: 1 }} />
       ))}
     </button>
@@ -105,24 +106,14 @@ const App: React.FC = () => {
   const ResultArea = () => (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#F9FAFB" }}>
       {loading ? (
-        <ResultsPanel response={null} loading={true} />
+        <QueryLoadingState query={activeQuery} />
       ) : response ? (
         <>
           <div style={{
             background: "#fff", borderBottom: "1px solid #E5E7EB",
             padding: "12px 24px", display: "flex", alignItems: "center", gap: 14, flexShrink: 0,
           }}>
-            <div style={{ width: 4, height: 28, background: R.red, borderRadius: 2, flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{
-                fontFamily: "'Barlow', sans-serif", fontSize: 9, fontWeight: 700,
-                color: "#9CA3AF", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 3px",
-              }}>Active Query</p>
-              <p style={{
-                fontFamily: "'Barlow', sans-serif", fontSize: 14, color: "#111827",
-                margin: 0, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-              }}>"{response.query}"</p>
-            </div>
+
             <SaveButton
               query={response.query}
               intentName={response.selectedIntent}

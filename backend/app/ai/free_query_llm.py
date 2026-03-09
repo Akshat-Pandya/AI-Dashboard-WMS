@@ -5,9 +5,10 @@ import re
 import requests
 from typing import Any, Dict, Tuple
 from app.ai.db_schema_context import DB_SCHEMA
+from app.config import MODEL_NAME, OLLAMA_URL
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "qwen2.5:7b"
+# OLLAMA_URL = "http://localhost:11434/api/generate"
+# MODEL_NAME = "qwen2.5:7b"
 
 SYSTEM_PROMPT = f"""
 You are a warehouse data analyst with access to a MySQL database.

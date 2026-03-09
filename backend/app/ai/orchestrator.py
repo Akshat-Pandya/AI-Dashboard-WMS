@@ -2,17 +2,19 @@
 orchestrator.py
 Full pipeline:
   1. Classify intents
-  1.5 Early rejection for irrelevant queries         ← NEW
+  1.5 Early rejection for irrelevant queries
   2. Keyword fallback     (if unknown)
   3. Free SQL fallback    (if still unknown/unsupported)
-     - warehouse-term guard before hitting DB         ← NEW
+     - warehouse-term guard before hitting DB
   4. Extract params
   5. Run tools (with params)
+  5b. Trend aggregation   (if query is trend/history related)
   6. Summary LLM → widgets + summary
-  6.5 Widget safety net  (ensure every intent has a widget) ← NEW
-  6.6 Priority-sort widgets                          ← NEW
+  6.5 Widget safety net  (ensure every intent has a widget)
+  6.6 Priority-sort widgets
   7. Return QueryResponse
 """
+from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -31,12 +33,11 @@ from app.tools.registry import INTENT_DATA_KEY
 from app.tools.runner import run_tools
 
 # ── Widget priority order (lower number = shown first) ────────────────────────
-# Operators need alerts and blockers before summaries and charts.
 _WIDGET_PRIORITY: Dict[str, int] = {
     "ALERT_LIST":         1,
     "OVERVIEW_PANEL":     2,
     "KPI_CARDS":          3,
-    "TABLE":              4,   # blocked tasks, stuck orders, low stock
+    "TABLE":              4,
     "ZONE_COMPARE_CHART": 5,
     "INBOUND_SUMMARY":    6,
     "BAR_CHART":          7,
@@ -50,6 +51,66 @@ _WAREHOUSE_TERMS = {
     "carrier", "stock", "warehouse", "pallet", "putaway", "location",
     "receiving", "shipment", "replenish", "reorder", "fulfillment",
 }
+
+# ── Trend detection ───────────────────────────────────────────────────────────
+_TREND_KEYWORDS = {
+    "trend", "over time", "history", "historical",
+    "last 7", "last week", "daily", "per day", "over the",
+}
+
+# Maps intent → (tool_output_key, list_key, date_field)
+_TREND_CONFIG = {
+    Intent.WAREHOUSE_ALERTS: ("alerts",       "alerts", "timestamp"),
+    Intent.INBOUND_ACTIVITY: ("inbound",      "asns",   "expected_date"),
+    Intent.ORDER_STATUS:     ("orders",       "orders", "created_at"),
+    Intent.ACTIVE_TASKS:     ("active_tasks", "tasks",  "created_at"),
+    Intent.BLOCKED_TASKS:    ("blocked_tasks","tasks",  "created_at"),
+}
+
+
+def _is_trend_query(query: str) -> bool:
+    q = query.lower()
+    return any(kw in q for kw in _TREND_KEYWORDS)
+
+
+def _aggregate_trend(tool_outputs: Dict[str, Any], intents: List[IntentScore]) -> Dict[str, Any]:
+    """
+    Group rows by date for each intent that has a trend config.
+    Adds tool_outputs["trend"] = { "alerts": [{date, count},...], ... }
+    """
+    trend_data: Dict[str, List[Dict[str, Any]]] = {}
+
+    for intent_score in intents:
+        cfg = _TREND_CONFIG.get(intent_score.intent)
+        if not cfg:
+            continue
+
+        output_key, list_key, date_field = cfg
+        output = tool_outputs.get(output_key, {})
+        items  = output.get(list_key, []) if isinstance(output, dict) else []
+
+        if not items:
+            continue
+
+        counts: Dict[str, int] = defaultdict(int)
+        for item in items:
+            raw_date = item.get(date_field) or ""
+            date     = str(raw_date)[:10]   # "2026-02-17T10:30:00" → "2026-02-17"
+            if date:
+                counts[date] += 1
+
+        if counts:
+            series = sorted(
+                [{"date": d, "count": c} for d, c in counts.items()],
+                key=lambda x: x["date"],
+            )
+            trend_data[output_key] = series
+            print(f"📈 Trend aggregated for {output_key}: {series}")
+
+    if trend_data:
+        tool_outputs["trend"] = trend_data
+
+    return tool_outputs
 
 
 # =============================================================================
@@ -70,9 +131,6 @@ def orchestrate(
     all_unknown   = all(i.intent == Intent.UNKNOWN for i in intents)
 
     # ── Step 1.5: Early rejection — irrelevant queries ────────────────────────
-    # If EVERY intent is irrelevant/unknown → reject immediately.
-    # This short-circuits before keyword fallback, param extraction,
-    # tool execution, and free-SQL — saving up to 27s per bad query.
     has_irrelevant = any(i.intent == Intent.IRRELEVANT_QUERY for i in intents)
     if has_irrelevant and all(
         i.intent in (Intent.IRRELEVANT_QUERY, Intent.UNKNOWN)
@@ -87,10 +145,7 @@ def orchestrate(
             ),
             widgets=[],
             data={},
-            intents=[{
-                "intent":     Intent.IRRELEVANT_QUERY.value,
-                "confidence": 0.99,
-            }],
+            intents=[{"intent": Intent.IRRELEVANT_QUERY.value, "confidence": 0.99}],
         )
 
     # ── Step 2: Keyword fallback ──────────────────────────────────────────────
@@ -102,11 +157,9 @@ def orchestrate(
             all_unknown = False
             print(f"🔑 Keyword fallback intents: {[i.intent.value for i in intents]}")
 
-    # ── Step 3: Free SQL fallback (warehouse-related but no mapped tool) ───────
-    # Guard: only hit the DB if the query actually references warehouse entities.
-    # Purely irrelevant queries that slipped past Step 1.5 are caught here.
+    # ── Step 3: Free SQL fallback ─────────────────────────────────────────────
     if all_unknown:
-        q_lower          = query.lower()
+        q_lower            = query.lower()
         is_warehouse_query = any(term in q_lower for term in _WAREHOUSE_TERMS)
 
         if is_warehouse_query:
@@ -122,10 +175,7 @@ def orchestrate(
                 ),
                 widgets=[],
                 data={},
-                intents=[{
-                    "intent":     Intent.IRRELEVANT_QUERY.value,
-                    "confidence": 0.99,
-                }],
+                intents=[{"intent": Intent.IRRELEVANT_QUERY.value, "confidence": 0.99}],
             )
 
     # ── Step 4: Parameter extraction ─────────────────────────────────────────
@@ -137,7 +187,15 @@ def orchestrate(
     tool_outputs = run_tools(intents=intents, db=db, params=merged_params)
     print(f"✅ Tools executed, keys: {list(tool_outputs.keys())}")
 
+    # ── Step 5b: Trend aggregation ────────────────────────────────────────────
+    is_trend = _is_trend_query(query)
+    if is_trend:
+        tool_outputs = _aggregate_trend(tool_outputs, intents)
+        print(f"📊 Trend keys: {list(tool_outputs.get('trend', {}).keys())}")
+
     # ── Step 6: Summary LLM ──────────────────────────────────────────────────
+    # For trend queries, summary_llm bypasses the LLM widget selection entirely
+    # and builds LINE_CHART widgets directly from tool_outputs["trend"].
     summary_response = generate_summary_and_widgets(
         query=query,
         intents=intents,
@@ -147,17 +205,16 @@ def orchestrate(
     print(f"✅ Widgets (pre-fix): {[w.type for w in summary_response.widgets]}")
 
     # ── Step 6.5: Widget safety net ───────────────────────────────────────────
-    # Guarantees every intent that produced data has at least one widget.
-    # Only adds fallback widgets — never removes LLM-chosen ones.
-    summary_response.widgets = _ensure_widgets(
-        intents=intents,
-        widgets=summary_response.widgets,
-        tool_outputs=tool_outputs,
-    )
+    # SKIP for trend queries — summary_llm already built the correct LINE_CHARTs.
+    # Running _ensure_widgets would inject TABLE/KPI_CARDS on top of them.
+    if not is_trend:
+        summary_response.widgets = _ensure_widgets(
+            intents=intents,
+            widgets=summary_response.widgets,
+            tool_outputs=tool_outputs,
+        )
 
     # ── Step 6.6: Priority-sort widgets ──────────────────────────────────────
-    # Alerts first, then overview, KPIs, tables, charts.
-    # Python sort is stable — same-type widgets keep their relative order.
     summary_response.widgets = _sort_widgets(summary_response.widgets)
 
     print(f"✅ Widgets (final):   {[w.type for w in summary_response.widgets]}")
@@ -168,22 +225,15 @@ def orchestrate(
         summary=summary_response.summary,
         widgets=summary_response.widgets,
         data=tool_outputs,
-        intents=[{
-            "intent":     s.intent.value,
-            "confidence": s.confidence,
-        } for s in intents],
+        intents=[{"intent": s.intent.value, "confidence": s.confidence} for s in intents],
     )
 
 
 # =============================================================================
-#  FREE-SQL FALLBACK  (warehouse queries with no mapped intent)
+#  FREE-SQL FALLBACK
 # =============================================================================
 
 def _handle_unknown_query(query: str, db: Session) -> QueryResponse:
-    """
-    Free SQL fallback for warehouse queries that don't match any known intent.
-    Only called when the query contains warehouse entity terms (Step 3 guard).
-    """
     print("🔄 Entering free-query fallback mode")
 
     llm_output = generate_free_query(query)
@@ -208,23 +258,14 @@ def _handle_unknown_query(query: str, db: Session) -> QueryResponse:
     result  = execute_free_sql(db, sql)
     summary = summarize_free_result(query, sql, result, widget_type)
 
-    # Always include the widget — if SQL errored, surface the error in props
-    # rather than silently returning 0 widgets (which breaks the frontend).
     widget_props = {"explanation": explanation, "sql": sql}
     if "error" in result:
         widget_props["error"] = result["error"]
 
-    widget = WidgetConfig(
-        type=widget_type,
-        title=widget_title,
-        data_key="free_query",
-        props=widget_props,
-    )
-
     return QueryResponse(
         query=query,
         summary=summary,
-        widgets=[widget],          # always return the widget
+        widgets=[WidgetConfig(type=widget_type, title=widget_title, data_key="free_query", props=widget_props)],
         data={"free_query": result},
         intents=[{"intent": Intent.UNSUPPORTED_WAREHOUSE.value, "confidence": 0.0}],
     )
@@ -240,32 +281,14 @@ def _ensure_widgets(
     tool_outputs: Dict[str, Any],
 ) -> List[WidgetConfig]:
     """
-    Safety net: for every intent that has tool output data but no corresponding
-    widget, inject a fallback widget using FALLBACK_MAP defaults.
-
-    This fixes:
-      - warehouse_overview returning 0 widgets (LLM forgets OVERVIEW_PANEL)
-      - Any intent where the summary LLM omits a widget by mistake
-
-    BUG FIX vs original:
-      Previously used split('.')[0] to build `covered`, so a widget with
-      data_key='overview.kpis' would mark 'overview' as covered, blocking
-      fallback injection of the correct OVERVIEW_PANEL widget.
-      Now we match against the FULL canonical data_key for each intent
-      so only a correct widget blocks the fallback.
-
-    Guarantee: only ADDS widgets, never removes existing ones.
+    Safety net: inject fallback widgets for intents with data but no widget.
+    Only called for non-trend queries.
     """
     if not tool_outputs:
         return widgets
 
-    # Build a set of full data_keys already correctly covered.
-    # A widget covers a data_key only if its data_key exactly matches
-    # the canonical FALLBACK_MAP entry for that tool output key.
-    # This prevents a wrong "overview.kpis" from blocking "overview".
     correctly_covered: set = set()
     for w in widgets:
-        # Exact match to FALLBACK_MAP values
         for tool_key, (_, canonical_dk) in FALLBACK_MAP.items():
             if w.data_key == canonical_dk:
                 correctly_covered.add(tool_key)
@@ -274,11 +297,7 @@ def _ensure_widgets(
     extras: List[WidgetConfig] = []
 
     for score in intents:
-        if score.intent in (
-            Intent.UNKNOWN,
-            Intent.IRRELEVANT_QUERY,
-            Intent.UNSUPPORTED_WAREHOUSE,
-        ):
+        if score.intent in (Intent.UNKNOWN, Intent.IRRELEVANT_QUERY, Intent.UNSUPPORTED_WAREHOUSE):
             continue
 
         data_key = INTENT_DATA_KEY.get(score.intent)
@@ -287,9 +306,8 @@ def _ensure_widgets(
         if data_key in correctly_covered:
             continue
         if data_key not in tool_outputs:
-            continue  # tool didn't run or returned nothing
+            continue
 
-        # Data exists but no correct widget covers it — inject fallback
         widget_type, full_data_key = FALLBACK_MAP.get(data_key, ("TABLE", data_key))
         title = data_key.replace("_", " ").title()
 
@@ -307,23 +325,5 @@ def _ensure_widgets(
 
 
 def _sort_widgets(widgets: List[WidgetConfig]) -> List[WidgetConfig]:
-    """
-    Sort widgets by operational priority so the most actionable information
-    appears first in the UI — regardless of LLM output order.
-
-    Priority (ascending = shown first):
-      1. ALERT_LIST       — operators need to see problems immediately
-      2. OVERVIEW_PANEL   — warehouse health at a glance
-      3. KPI_CARDS        — performance metrics
-      4. TABLE            — detail rows (tasks, orders, stock)
-      5. ZONE_COMPARE_CHART
-      6. INBOUND_SUMMARY
-      7. BAR_CHART / LINE_CHART
-
-    Unknown widget types fall to the end (priority 99).
-    Python sort is stable: same-priority widgets keep their LLM-assigned order.
-    """
-    return sorted(
-        widgets,
-        key=lambda w: _WIDGET_PRIORITY.get(w.type, 99),
-    )
+    """Sort widgets by operational priority — alerts first, charts last."""
+    return sorted(widgets, key=lambda w: _WIDGET_PRIORITY.get(w.type, 99))

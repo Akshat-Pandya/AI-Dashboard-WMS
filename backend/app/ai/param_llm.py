@@ -9,9 +9,7 @@ import requests
 from typing import Any, Dict, List
 
 from app.core.schemas import IntentScore
-
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "qwen2.5:7b"
+from app.config import MODEL_NAME, OLLAMA_URL
 
 # ── Valid values — LLM must only return these for status ─────────────────────
 VALID_ORDER_STATUSES = {"pending", "picking", "packed", "shipped", "cancelled"}
