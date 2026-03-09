@@ -43,7 +43,7 @@ export const QueryLoadingState: React.FC<Props> = ({ query }) => {
           borderRightColor: R.red,
           animation: "spin 0.9s linear infinite",
         }} />
-        {/* Center dot */}
+        {/* Center dot
         <div style={{
           position: "absolute",
           top: "50%", left: "50%",
@@ -51,7 +51,7 @@ export const QueryLoadingState: React.FC<Props> = ({ query }) => {
           width: 6, height: 6,
           borderRadius: "50%",
           background: R.red,
-        }} />
+        }} /> */}
       </div>
 
       {/* Query text */}

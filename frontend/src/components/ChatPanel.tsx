@@ -62,7 +62,7 @@ export const ChatPanel: React.FC<Props> = ({
   onRunSaved,
   savedRefreshKey = 0,
 }) => {
-  const [input, setInput] = useState("");
+  const [input, setInput]       = useState("");
   const [dashboards, setDashboards] = useState<DashboardMeta[]>([]);
   const [fetching, setFetching] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -79,6 +79,7 @@ export const ChatPanel: React.FC<Props> = ({
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    if (loading) return;
     setDeleting(id);
     try {
       await fetch(`${BASE_URL}/dashboards/${id}`, { method: "DELETE" });
@@ -91,7 +92,7 @@ export const ChatPanel: React.FC<Props> = ({
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (input.trim()) { onSubmit(input.trim()); setInput(""); }
+      if (input.trim() && !loading) { onSubmit(input.trim()); setInput(""); }
     }
   };
 
@@ -104,6 +105,11 @@ export const ChatPanel: React.FC<Props> = ({
     flexShrink: 0,
     borderRight: "1px solid #1A1D22",
   };
+
+  // Shared style applied to the scrollable list area when loading
+  const listLockStyle: React.CSSProperties = loading
+    ? { pointerEvents: "none", opacity: 0.4, transition: "opacity 0.2s" }
+    : { pointerEvents: "auto", opacity: 1,   transition: "opacity 0.2s" };
 
   // ── Header ────────────────────────────────────────────────────────────────
   const Header = () => (
@@ -161,15 +167,18 @@ export const ChatPanel: React.FC<Props> = ({
         }}>
           <div style={{
             width: 5, height: 5, borderRadius: "50%",
-            background: "#22C55E",
-            boxShadow: "0 0 5px #22C55E88",
+            background: loading ? "#F59E0B" : "#22C55E",
+            boxShadow: loading ? "0 0 5px #F59E0B88" : "0 0 5px #22C55E88",
+            transition: "background 0.3s, box-shadow 0.3s",
           }} />
           <span style={{
             fontFamily: "'Barlow', sans-serif",
             fontSize: 9, fontWeight: 800,
-            color: "#22C55E", letterSpacing: "0.1em",
+            color: loading ? "#F59E0B" : "#22C55E",
+            letterSpacing: "0.1em",
+            transition: "color 0.3s",
           }}>
-            LIVE
+            {loading ? "RUNNING" : "LIVE"}
           </span>
         </div>
       </div>
@@ -208,6 +217,7 @@ export const ChatPanel: React.FC<Props> = ({
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKey}
+        disabled={loading}
         placeholder="Ask anything about your warehouse..."
         rows={rows}
         style={{
@@ -218,17 +228,18 @@ export const ChatPanel: React.FC<Props> = ({
           padding: "10px 12px",
           fontFamily: "'Barlow', sans-serif",
           fontSize: 13, lineHeight: 1.5,
-          color: "#F3F4F6",
+          color: loading ? "#4A5260" : "#F3F4F6",
           resize: "none",
           boxSizing: "border-box",
           outline: "none",
-          transition: "border-color 0.15s",
+          transition: "border-color 0.15s, color 0.15s",
+          cursor: loading ? "not-allowed" : "text",
         }}
-        onFocus={(e) => { e.currentTarget.style.borderColor = R.red; }}
+        onFocus={(e) => { if (!loading) e.currentTarget.style.borderColor = R.red; }}
         onBlur={(e) => { e.currentTarget.style.borderColor = "#252A32"; }}
       />
       <button
-        onClick={() => { if (input.trim()) { onSubmit(input.trim()); setInput(""); } }}
+        onClick={() => { if (input.trim() && !loading) { onSubmit(input.trim()); setInput(""); } }}
         disabled={loading || !input.trim()}
         style={{
           marginTop: 8, width: "100%",
@@ -247,9 +258,10 @@ export const ChatPanel: React.FC<Props> = ({
       </button>
       <p style={{
         fontFamily: "'Barlow', sans-serif",
-        fontSize: 9, color: "#B0B8C4",
+        fontSize: 9, color: loading ? "#2A2F38" : "#B0B8C4",
         margin: "7px 0 0", textAlign: "center",
         letterSpacing: "0.06em",
+        transition: "color 0.2s",
       }}>
         ENTER · SHIFT+ENTER for new line
       </p>
@@ -266,61 +278,50 @@ export const ChatPanel: React.FC<Props> = ({
         <Brand />
         <SectionLabel>Saved Dashboards</SectionLabel>
 
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        {/* Lock overlay on the list — blocks all clicks while loading */}
+        <div style={{ flex: 1, overflowY: "auto", ...listLockStyle }}>
 
-          {/* Skeletons */}
           {fetching && [1, 2, 3].map((i) => (
             <div key={i} style={{
-              margin: "0 14px 6px",
-              height: 56,
-              background: "#111417",
-              borderRadius: 4,
-              opacity: 0.5,
+              margin: "0 14px 6px", height: 56,
+              background: "#111417", borderRadius: 4, opacity: 0.5,
             }} />
           ))}
 
-          {/* Empty */}
           {!fetching && dashboards.length === 0 && (
             <div style={{ padding: "40px 20px", textAlign: "center" }}>
               <div style={{ fontSize: 26, opacity: 0.2, marginBottom: 10 }}>⊟</div>
               <p style={{
-                fontFamily: "'Barlow', sans-serif",
-                fontSize: 13, fontWeight: 600,
+                fontFamily: "'Barlow', sans-serif", fontSize: 13, fontWeight: 600,
                 color: "#D1D5DB", margin: "0 0 4px",
-              }}>
-                No saved dashboards
-              </p>
+              }}>No saved dashboards</p>
               <p style={{
-                fontFamily: "'Barlow', sans-serif",
-                fontSize: 11, color: "#D1D5DB",
-                margin: 0, lineHeight: 1.5,
-              }}>
-                Run a query and click Save
-              </p>
+                fontFamily: "'Barlow', sans-serif", fontSize: 11,
+                color: "#D1D5DB", margin: 0, lineHeight: 1.5,
+              }}>Run a query and click Save</p>
             </div>
           )}
 
-          {/* List */}
           {!fetching && dashboards.map((d) => {
-            const isActive = activeQuery === d.query_text;
+            const isActive    = activeQuery === d.query_text;
             const intentColor = INTENT_COLORS[d.intent_name ?? ""] ?? "#B0B8C4";
             const intentLabel = INTENT_LABELS[d.intent_name ?? ""] ?? d.intent_name?.replace(/_/g, " ") ?? "";
 
             return (
               <div
                 key={d.id}
-                onClick={() => onRunSaved?.(d.id, d.query_text)}
+                onClick={() => !loading && onRunSaved?.(d.id, d.query_text)}
                 style={{
                   display: "flex", alignItems: "center", gap: 10,
                   padding: "12px 12px 12px 0",
-                  cursor: "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
                   borderLeft: `3px solid ${isActive ? R.red : "transparent"}`,
                   borderBottom: "1px solid #111417",
                   background: isActive ? "rgba(232,0,28,0.07)" : "transparent",
                   transition: "all 0.15s",
                 }}
                 onMouseEnter={(e) => {
-                  if (!isActive) {
+                  if (!isActive && !loading) {
                     const el = e.currentTarget as HTMLDivElement;
                     el.style.background = "#0F1114";
                     el.style.borderLeftColor = "#B0B8C4";
@@ -329,8 +330,8 @@ export const ChatPanel: React.FC<Props> = ({
                 onMouseLeave={(e) => {
                   if (!isActive) {
                     const el = e.currentTarget as HTMLDivElement;
-                    el.style.background = "transparent";
-                    el.style.borderLeftColor = "transparent";
+                    el.style.background = isActive ? "rgba(232,0,28,0.07)" : "transparent";
+                    el.style.borderLeftColor = isActive ? R.red : "transparent";
                   }
                 }}
               >
@@ -338,14 +339,12 @@ export const ChatPanel: React.FC<Props> = ({
                   paddingLeft: 14, flexShrink: 0,
                   color: isActive ? R.red : "#D1D5DB",
                   fontSize: 9, fontFamily: "monospace",
-                  transition: "color 0.15s",
                 }}>▶</div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{
                     fontFamily: "'Barlow', sans-serif",
-                    fontSize: 13,
-                    fontWeight: isActive ? 700 : 500,
+                    fontSize: 13, fontWeight: isActive ? 700 : 500,
                     color: isActive ? "#FFFFFF" : "#F3F4F6",
                     margin: "0 0 4px",
                     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
@@ -361,8 +360,7 @@ export const ChatPanel: React.FC<Props> = ({
                       }} />
                       <span style={{
                         fontFamily: "'Barlow', sans-serif",
-                        fontSize: 9, fontWeight: 700,
-                        color: "#B0B8C4",
+                        fontSize: 9, fontWeight: 700, color: "#B0B8C4",
                         letterSpacing: "0.1em", textTransform: "uppercase",
                       }}>
                         {intentLabel}
@@ -373,16 +371,16 @@ export const ChatPanel: React.FC<Props> = ({
 
                 <button
                   onClick={(e) => handleDelete(e, d.id)}
-                  disabled={deleting === d.id}
+                  disabled={deleting === d.id || loading}
                   title="Remove"
                   style={{
                     flexShrink: 0, background: "transparent", border: "none",
                     color: "#D1D5DB",
-                    cursor: deleting === d.id ? "not-allowed" : "pointer",
+                    cursor: deleting === d.id || loading ? "not-allowed" : "pointer",
                     fontSize: 13, padding: "4px 8px 4px 4px",
                     lineHeight: 1, borderRadius: 3, transition: "color 0.15s",
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#EF4444"; }}
+                  onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.color = "#EF4444"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#D1D5DB"; }}
                 >
                   {deleting === d.id ? "…" : "✕"}
@@ -405,7 +403,7 @@ export const ChatPanel: React.FC<Props> = ({
       <Header />
       <Brand />
 
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <div style={{ flex: 1, overflowY: "auto", ...listLockStyle }}>
         {history.length === 0 ? (
           <>
             <SectionLabel>Try asking</SectionLabel>
@@ -413,7 +411,8 @@ export const ChatPanel: React.FC<Props> = ({
               {SAMPLE_QUERIES.map((q, i) => (
                 <button
                   key={i}
-                  onClick={() => onSubmit(q)}
+                  onClick={() => !loading && onSubmit(q)}
+                  disabled={loading}
                   style={{
                     display: "block", width: "100%", textAlign: "left",
                     background: "#111417",
@@ -424,15 +423,17 @@ export const ChatPanel: React.FC<Props> = ({
                     fontFamily: "'Barlow', sans-serif",
                     fontSize: 12, fontWeight: 500,
                     color: "#F3F4F6",
-                    cursor: "pointer",
+                    cursor: loading ? "not-allowed" : "pointer",
                     lineHeight: 1.4,
                     transition: "all 0.15s",
                   }}
                   onMouseEnter={(e) => {
-                    const el = e.currentTarget as HTMLButtonElement;
-                    el.style.borderColor = "#B0B8C4";
-                    el.style.color = "#D1D5DB";
-                    el.style.background = "#141619";
+                    if (!loading) {
+                      const el = e.currentTarget as HTMLButtonElement;
+                      el.style.borderColor = "#B0B8C4";
+                      el.style.color = "#D1D5DB";
+                      el.style.background = "#141619";
+                    }
                   }}
                   onMouseLeave={(e) => {
                     const el = e.currentTarget as HTMLButtonElement;
@@ -453,16 +454,16 @@ export const ChatPanel: React.FC<Props> = ({
             <div style={{ padding: "0 14px 8px" }}>
               {[...history].reverse().map((q, i) => {
                 const isActive = q === activeQuery;
-                const num = history.length - i;
+                const num      = history.length - i;
                 return (
                   <div
                     key={i}
-                    onClick={() => onSubmit(q)}
+                    onClick={() => !loading && onSubmit(q)}
                     style={{
                       display: "flex", alignItems: "flex-start", gap: 10,
                       padding: "10px 12px",
                       marginBottom: 5,
-                      cursor: "pointer",
+                      cursor: loading ? "not-allowed" : "pointer",
                       background: isActive ? "rgba(232,0,28,0.08)" : "#111417",
                       border: `1px solid ${isActive ? R.red : "#1A1D22"}`,
                       borderRadius: 4,
@@ -474,7 +475,7 @@ export const ChatPanel: React.FC<Props> = ({
                       transition: "all 0.15s",
                     }}
                     onMouseEnter={(e) => {
-                      if (!isActive) {
+                      if (!isActive && !loading) {
                         const el = e.currentTarget as HTMLDivElement;
                         el.style.borderColor = "#B0B8C4";
                         el.style.color = "#D1D5DB";

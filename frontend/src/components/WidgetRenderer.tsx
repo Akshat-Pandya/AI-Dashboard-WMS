@@ -136,16 +136,27 @@ function numericObjectToBars(
 function zoneCompareToBarData(
   obj: Record<string, unknown>
 ): { bars: unknown[]; keys: string[]; colors: string[] } | null {
-  const summary = obj.summary;
-  if (!Array.isArray(summary) || summary.length === 0) return null;
+  // Accept obj.zones (actual tool output) OR obj.summary (legacy)
+  const rows = Array.isArray(obj.zones) ? obj.zones
+             : Array.isArray(obj.summary) ? obj.summary
+             : null;
+  if (!rows || rows.length === 0) return null;
 
-  const first       = summary[0] as Record<string, unknown>;
-  const allKeys     = Object.keys(first);
-  const numericKeys = allKeys.filter((k) => k !== "zone" && isNumericValue(first[k]));
+  const first   = rows[0] as Record<string, unknown>;
+  const allKeys = Object.keys(first);
+
+  // Coerce strings to numbers — backend serialises aggregated fields as strings ("393")
+  const numericKeys = allKeys.filter((k) => {
+    if (k === "zone") return false;
+    const v = first[k];
+    if (typeof v === "number") return true;
+    if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) return true;
+    return false;
+  });
 
   if (numericKeys.length === 0) return null;
 
-  const bars = summary.map((item: any) => {
+  const bars = rows.map((item: any) => {
     const row: Record<string, unknown> = { zone: item.zone ?? "?" };
     numericKeys.forEach((k) => { row[k] = Number(item[k]); });
     return row;
