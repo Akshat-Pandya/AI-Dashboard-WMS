@@ -15,7 +15,7 @@ from typing import Any, Dict, List
 
 from app.core.schemas import IntentScore, SummaryResponse, WidgetConfig
 from app.ai.widget_registry import WIDGET_REGISTRY, FALLBACK_MAP
-from app.config import MODEL_NAME, OLLAMA_URL
+from backend.app.core.config import MODEL_NAME, OLLAMA_URL
 
 # ── Trend keywords — must match orchestrator._TREND_KEYWORDS exactly ─────────
 _TREND_KEYWORDS = {

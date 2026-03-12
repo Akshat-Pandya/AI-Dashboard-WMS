@@ -11,7 +11,7 @@ from typing import List
 from app.core.schemas import Intent, IntentResult, IntentScore
 from app.ai.thresholds import INTENT_CONFIDENCE_THRESHOLD
 
-from app.config import MODEL_NAME, OLLAMA_URL
+from backend.app.core.config import MODEL_NAME, OLLAMA_URL, LLM_TIMEOUT
 
 SYSTEM_PROMPT = """
 You are an intent classifier for a Warehouse Management System (WMS).
@@ -175,7 +175,7 @@ def classify_intent(query: str) -> IntentResult:
     }
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=30)
+        response = requests.post(OLLAMA_URL, json=payload, timeout=LLM_TIMEOUT)
         response.raise_for_status()
 
         raw    = response.json().get("response", "").strip()

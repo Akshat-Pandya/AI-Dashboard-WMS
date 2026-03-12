@@ -5,10 +5,7 @@ import re
 import requests
 from typing import Any, Dict, Tuple
 from app.ai.db_schema_context import DB_SCHEMA
-from app.config import MODEL_NAME, OLLAMA_URL
-
-# OLLAMA_URL = "http://localhost:11434/api/generate"
-# MODEL_NAME = "qwen2.5:7b"
+from backend.app.core.config import MODEL_NAME, OLLAMA_URL, LLM_TIMEOUT
 
 SYSTEM_PROMPT = f"""
 You are a warehouse data analyst with access to a MySQL database.
@@ -50,7 +47,7 @@ def generate_free_query(user_query: str) -> Dict[str, Any]:
         "stream": False,
         "options": {"temperature": 0},
     }
-    response = requests.post(OLLAMA_URL, json=payload, timeout=45)
+    response = requests.post(OLLAMA_URL, json=payload, timeout=LLM_TIMEOUT)
     raw = response.json().get("response", "").strip()
     print("🔍 Free query LLM raw:", raw[:300])
     return _extract_json(raw)

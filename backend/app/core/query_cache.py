@@ -9,12 +9,11 @@ the same get/set/keys interface.
 from collections import OrderedDict
 from threading import Lock
 from typing import Any, Dict, Optional
-
-CACHE_SIZE = 15
+from backend.app.core.config import QUERY_CACHE_SIZE
 
 
 class QueryCache:
-    def __init__(self, maxsize: int = CACHE_SIZE):
+    def __init__(self, maxsize: int = QUERY_CACHE_SIZE):
         self._store: OrderedDict[str, Any] = OrderedDict()
         self._maxsize = maxsize
         self._lock = Lock()

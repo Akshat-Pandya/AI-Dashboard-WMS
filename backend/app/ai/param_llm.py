@@ -9,7 +9,7 @@ import requests
 from typing import Any, Dict, List
 
 from app.core.schemas import IntentScore
-from app.config import MODEL_NAME, OLLAMA_URL
+from backend.app.core.config import MODEL_NAME, OLLAMA_URL
 
 # ── Valid values — LLM must only return these for status ─────────────────────
 VALID_ORDER_STATUSES = {"pending", "picking", "packed", "shipped", "cancelled"}
