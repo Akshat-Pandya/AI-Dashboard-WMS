@@ -37,8 +37,8 @@ spec:
               mountPath: /root/.ollama
           resources:
             requests:
-              memory: "2Gi"
-              cpu: "500m"
+              memory: "1Gi"
+              cpu: "200m"
             limits:
               memory: "6Gi"
               cpu: "2"
@@ -80,8 +80,8 @@ spec:
                 name: wms-config
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "100m"
+              memory: "128Mi"
+              cpu: "50m"
             limits:
               memory: "1Gi"
               cpu: "1"
