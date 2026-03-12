@@ -5,7 +5,7 @@ import re
 import requests
 from typing import Any, Dict, Tuple
 from app.ai.db_schema_context import DB_SCHEMA
-from backend.app.core.config import MODEL_NAME, OLLAMA_URL, LLM_TIMEOUT
+from app.core.config import MODEL_NAME, OLLAMA_URL, LLM_TIMEOUT
 
 SYSTEM_PROMPT = f"""
 You are a warehouse data analyst with access to a MySQL database.

@@ -6,7 +6,7 @@ load_dotenv()  # loads .env from project root
 
 # ── LLM / Ollama ─────────────────────────────────────────────────────────────
 OLLAMA_URL  = os.getenv("OLLAMA_URL",  "http://localhost:11434/api/generate")
-MODEL_NAME  = os.getenv("MODEL_NAME",  "qwen2.5:7b")
+MODEL_NAME  = os.getenv("MODEL_NAME",  "llama3.1:8b")
 LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "45"))   
 
 # ── Database ──────────────────────────────────────────────────────────────────

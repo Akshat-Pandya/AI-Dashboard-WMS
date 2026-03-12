@@ -4,7 +4,7 @@ import json
 import re
 import requests
 from typing import Any, Dict
-from backend.app.core.config import MODEL_NAME, OLLAMA_URL
+from app.core.config import MODEL_NAME, OLLAMA_URL
 
 def summarize_free_result(
     user_query: str,

@@ -155,7 +155,7 @@ ollama serve
 # In a new terminal — pull the model
 ollama pull qwen2.5:7b
 
-# Or a lighter alternative
+# Or alternatively
 ollama pull llama3.1:8b
 ```
 

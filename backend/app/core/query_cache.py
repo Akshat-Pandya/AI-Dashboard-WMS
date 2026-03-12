@@ -9,7 +9,7 @@ the same get/set/keys interface.
 from collections import OrderedDict
 from threading import Lock
 from typing import Any, Dict, Optional
-from backend.app.core.config import QUERY_CACHE_SIZE
+from app.core.config import QUERY_CACHE_SIZE
 
 
 class QueryCache:

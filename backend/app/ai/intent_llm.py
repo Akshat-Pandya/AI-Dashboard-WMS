@@ -11,7 +11,7 @@ from typing import List
 from app.core.schemas import Intent, IntentResult, IntentScore
 from app.ai.thresholds import INTENT_CONFIDENCE_THRESHOLD
 
-from backend.app.core.config import MODEL_NAME, OLLAMA_URL, LLM_TIMEOUT
+from app.core.config import MODEL_NAME, OLLAMA_URL, LLM_TIMEOUT
 
 SYSTEM_PROMPT = """
 You are an intent classifier for a Warehouse Management System (WMS).
