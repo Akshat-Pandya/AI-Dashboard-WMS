@@ -19,7 +19,7 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; border: string 
 };
 
 /** Render any cell value safely — handles booleans, null, numbers, strings */
-function renderCell(cell: unknown, colIndex: number): React.ReactNode {
+function renderCell(cell: unknown, _colIndex: number): React.ReactNode {
   // ── Null / undefined ─────────────────────────────────────────────────────
   if (cell === null || cell === undefined) {
     return <span style={{ color: R.textMuted, fontSize: 12 }}>—</span>;

@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wms-backend
+  namespace: wms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wms-backend
+  template:
+    metadata:
+      labels:
+        app: wms-backend
+    spec:
+      initContainers:
+        - name: ollama-model-pull
+          image: ollama/ollama:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              ollama serve &
+              sleep 5
+              ollama pull qwen2.5:7b
+              kill %1
+          volumeMounts:
+            - name: ollama-models
+              mountPath: /root/.ollama
+
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - containerPort: 11434
+          volumeMounts:
+            - name: ollama-models
+              mountPath: /root/.ollama
+          resources:
+            requests:
+              memory: "6Gi"
+              cpu: "2"
+            limits:
+              memory: "8Gi"
+              cpu: "4"
+
+        - name: wms-api
+          image: akshatpandya04/wms-backend:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wms-secrets
+                  key: DB_PASSWORD
+            - name: DATABASE_URL
+              value: "mysql+pymysql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
+          envFrom:
+            - configMapRef:
+                name: wms-config
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+
+      volumes:
+        - name: ollama-models
+          persistentVolumeClaim:
+            claimName: ollama-models-pvc

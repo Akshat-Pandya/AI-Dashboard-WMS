@@ -12,5 +12,15 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
+    proxy: {
+      "/query": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/dashboards": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
   },
 });

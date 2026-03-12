@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { R } from "@/tokens/brand";
 
 interface Props {
   query:        string;
@@ -8,7 +7,7 @@ interface Props {
   onSaved?:     () => void;   // called after a successful save (not on unsave)
 }
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const BASE_URL = "";
 
 export const SaveButton: React.FC<Props> = ({ query, intentName, params, onSaved }) => {
   const [status, setStatus]     = useState<"checking" | "unsaved" | "saved">("checking");

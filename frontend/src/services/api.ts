@@ -9,7 +9,7 @@ import type { WMSResponse } from "@/types";
 import { buildTabResults } from "./buildTabResults";
 import { MOCK_RESPONSE } from "@/data/mockResponse";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const BASE_URL = "";
 const MOCK_DELAY_MS = 900;
 const USE_MOCK = false; // ← flip to true to use mock data
 

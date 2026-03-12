@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wms-config
+  namespace: wms
+data:
+  DB_HOST: "mysql-service"
+  DB_PORT: "3306"
+  DB_NAME: "wms"
+  DB_USER: "wmsuser"
+  OLLAMA_URL: "http://localhost:11434/api/generate"
+  MODEL_NAME: "qwen2.5:7b"
+  LLM_TIMEOUT: "45"
+  CORS_ORIGINS: "http://localhost:5173"
+  QUERY_CACHE_SIZE: "15"
+  INTENT_CONFIDENCE_THRESHOLD: "0.6"
+  DEFAULT_ALERT_LIMIT: "20"
+  DEFAULT_TASK_LIMIT: "50"
+  DEFAULT_ORDER_LIMIT: "25"
+  DEFAULT_INVENTORY_LIMIT: "100"
+  DEFAULT_ASN_LIMIT: "25"
+  DEFAULT_KPI_LIMIT: "10"
+  BACKEND_HOST: "wms-backend-service"
+  BACKEND_PORT: "8000"

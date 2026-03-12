@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wms-frontend
+  namespace: wms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wms-frontend
+  template:
+    metadata:
+      labels:
+        app: wms-frontend
+    spec:
+      containers:
+        - name: wms-frontend
+          image: akshatpandya04/wms-frontend:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: BACKEND_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: wms-config
+                  key: BACKEND_HOST
+            - name: BACKEND_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: wms-config
+                  key: BACKEND_PORT

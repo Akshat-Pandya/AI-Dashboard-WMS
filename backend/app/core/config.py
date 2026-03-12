@@ -1,8 +1,11 @@
 # app/core/config.py
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()  # loads .env from project root
+# Explicit path — works regardless of where uvicorn is launched from
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  
+load_dotenv(BASE_DIR / ".env")
 
 # ── LLM / Ollama ─────────────────────────────────────────────────────────────
 OLLAMA_URL  = os.getenv("OLLAMA_URL",  "http://localhost:11434/api/generate")

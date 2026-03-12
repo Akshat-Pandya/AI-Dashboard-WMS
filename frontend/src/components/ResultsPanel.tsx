@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { R } from "@/tokens/brand";
 import { Skeleton } from "./Skeleton";
 import { WidgetRenderer } from "./WidgetRenderer";
