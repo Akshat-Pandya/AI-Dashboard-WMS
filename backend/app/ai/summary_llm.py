@@ -82,7 +82,8 @@ intent: zone_inventory_compare
 
 intent: kpi_summary
   → widget: KPI_CARDS   data_key: "kpis.kpis"
-  → ONLY use this for explicit KPI/metric/performance queries.
+  → use this for KPI/warehouse metric/warehouse performance queries.
+  → MUST use this for warehouse metric/warehouse performance queries.
 
 intent: inbound_activity
   → widget: INBOUND_SUMMARY   data_key: "inbound.asns"
@@ -116,8 +117,15 @@ You receive:
   3. Actual warehouse data from tool outputs
 
 Your job:
-  1. Write a SHORT factual summary (2–3 sentences) using ONLY real numbers from the data.
-     Do NOT invent numbers.
+  1. Write a SHORT factual summary (2-3 sentences) using ONLY real numbers from the data.
+     CRITICAL counting rules:
+     - Fields ending in "_COUNT" (e.g. "items_COUNT") are EXACT totals — use them directly.
+     - "_SAMPLE" fields are partial previews — never count rows in them.
+     - If the data contains "inventory_summary_hint", copy it VERBATIM as the inventory
+       part of your summary — do not rephrase or invent different numbers.
+     - If the data contains "alerts_summary_hint", copy it VERBATIM as the alerts
+       part of your summary — do not rephrase or invent different numbers.
+     - If you cannot determine accurate counts, say "Here is the requested warehouse data."
   2. Select the correct widget(s) for each detected intent using the rules below.
 
 Available widget types:
@@ -282,21 +290,42 @@ def _apply_safety_overrides(
                                            data_key="orders.by_status", props=None))
 
     # ── Fix 3: zone_compare → exactly ONE ZONE_COMPARE_CHART, correct key ────
+    # IMPORTANT: only touch ZONE_COMPARE_CHART widgets — preserve all others
+    # (e.g. the TABLE for inventory_lookup must survive this override).
     if "zone_inventory_compare" in intent_values:
-        # Remove any duplicates or wrong data_keys
         zone_widgets = [w for w in widgets if w.type == "ZONE_COMPARE_CHART"]
         other        = [w for w in widgets if w.type != "ZONE_COMPARE_CHART"]
         if zone_widgets:
-            # Keep only the first, force correct data_key
-            best = zone_widgets[0]
-            widgets = other + [WidgetConfig(type="ZONE_COMPARE_CHART",
-                                            title=best.title or "Zone Inventory Comparison",
-                                            data_key="zone_comparison",
-                                            props=best.props)]
+            best        = zone_widgets[0]
+            fixed_chart = WidgetConfig(
+                type     = "ZONE_COMPARE_CHART",
+                title    = best.title or "Zone Inventory Comparison",
+                data_key = "zone_comparison",
+                props    = best.props,
+            )
         else:
-            widgets = other + [WidgetConfig(type="ZONE_COMPARE_CHART",
-                                            title="Zone Inventory Comparison",
-                                            data_key="zone_comparison", props=None)]
+            fixed_chart = WidgetConfig(
+                type     = "ZONE_COMPARE_CHART",
+                title    = "Zone Inventory Comparison",
+                data_key = "zone_comparison",
+                props    = None,
+            )
+        # Re-combine: non-zone widgets first, then the single fixed chart
+        widgets = other + [fixed_chart]
+
+        # Ensure inventory TABLE is present when inventory_lookup also fired
+        if "inventory_lookup" in intent_values:
+            has_inv_table = any(
+                w.type == "TABLE" and "inventory" in w.data_key
+                for w in widgets
+            )
+            if not has_inv_table:
+                widgets.append(WidgetConfig(
+                    type     = "TABLE",
+                    title    = "Inventory Items",
+                    data_key = "inventory.items",
+                    props    = None,
+                ))
 
     # ── Fix 4: kpi_summary fired alongside order_status → drop KPI_CARDS ─────
     if "order_status" in intent_values and "kpi_summary" in intent_values:
@@ -367,17 +396,119 @@ def _fetch_summary_text_only(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+def _build_alerts_summary_hint(alerts_output: Dict[str, Any]) -> str:
+    """
+    Pre-compute a factual alerts summary sentence in Python.
+
+    Examples:
+      severity_filter="all",      breakdown={critical:2,warning:3}
+        → "There are 5 active alerts: 2 critical, 3 warning."
+      severity_filter="critical", count=2
+        → "There are 2 critical alerts."
+      count=0
+        → "There are no active alerts."
+    """
+    count      = alerts_output.get("alerts_COUNT", alerts_output.get("count", 0))
+    sev_filter = alerts_output.get("severity_filter", "all")
+    breakdown  = alerts_output.get("severity_breakdown", {})
+
+    if count == 0:
+        return "There are no active alerts."
+
+    alert_word = "alert" if count == 1 else "alerts"
+
+    # Filtered by a specific severity
+    if sev_filter and sev_filter != "all":
+        return f"There are {count} {sev_filter} {alert_word}."
+
+    # All alerts — include breakdown if available
+    if breakdown:
+        # Order by severity priority
+        _ORDER = ["critical", "high", "warning", "medium", "info", "low"]
+        parts  = [
+            f"{breakdown[s]} {s}"
+            for s in _ORDER
+            if s in breakdown
+        ]
+        # Also include any unexpected severity values
+        for k in breakdown:
+            if k not in _ORDER:
+                parts.append(f"{breakdown[k]} {k}")
+
+        if parts:
+            return f"There are {count} active {alert_word}: {', '.join(parts)}."
+
+    return f"There are {count} active {alert_word}."
+
+
+def _build_inventory_summary_hint(inv: Dict[str, Any]) -> str:
+    """
+    Pre-compute a factual inventory summary sentence in Python so the LLM
+    never has to count or infer — it just uses this string verbatim.
+
+    Examples:
+      zone_filter="Zone D"          → "There are 4 inventory items in Zone D."
+      zone_filter=["Zone D","Zone E"]→ "There are 6 inventory items across Zone D and Zone E."
+      zone_filter="all"             → "There are 30 inventory items across all zones."
+      active_filters category=Motors→ "There are 3 inventory items matching the applied filters."
+    """
+    count       = inv.get("items_COUNT", inv.get("count", 0))
+    zone_filter = inv.get("zone_filter", "all")
+    active_f    = inv.get("active_filters", {})
+
+    # Non-zone filters (category, status, location, sku) → generic sentence
+    non_zone_active = {
+        k: v for k, v in (active_f.items() if isinstance(active_f, dict) else {}.items())
+        if k not in ("zone", "zones", "zone_filter")
+    }
+    if non_zone_active:
+        filter_desc = ", ".join(f"{k}={v!r}" for k, v in non_zone_active.items())
+        return f"There are {count} inventory item(s) matching the applied filters ({filter_desc})."
+
+    # Zone-based sentence
+    item_word = "item" if count == 1 else "items"
+    if isinstance(zone_filter, list) and len(zone_filter) > 1:
+        zone_str = " and ".join(zone_filter)
+        return f"There are {count} inventory {item_word} across {zone_str}."
+    elif isinstance(zone_filter, list) and len(zone_filter) == 1:
+        return f"There are {count} inventory {item_word} in {zone_filter[0]}."
+    elif isinstance(zone_filter, str) and zone_filter.lower() not in ("all", "", "none"):
+        return f"There are {count} inventory {item_word} in {zone_filter}."
+    else:
+        return f"There are {count} inventory {item_word} across all zones."
+
+
 def _build_data_snapshot(tool_outputs: Dict[str, Any]) -> str:
+    """
+    Build a compact snapshot of tool outputs for the summary LLM.
+
+    For each list field we emit:
+      - "<field>_COUNT": exact integer  ← LLM MUST use this for any counts/totals
+      - "<field>_SAMPLE": first 2 rows  ← for context only, NOT for counting
+
+    For the inventory tool output specifically, we also inject a pre-computed
+    "inventory_summary_hint" sentence so the LLM never has to guess counts.
+    """
     snapshot: Dict[str, Any] = {}
     for key, value in tool_outputs.items():
         if isinstance(value, dict):
             trimmed: Dict[str, Any] = {}
             for k, v in value.items():
                 if isinstance(v, list):
-                    trimmed[k]                  = v[:2] if k not in _NO_TRIM_KEYS else v
-                    trimmed[f"{k}__total"]       = len(v)
+                    trimmed[f"{k}_COUNT"] = len(v)          # exact count
+                    if k not in _NO_TRIM_KEYS:
+                        trimmed[f"{k}_SAMPLE"] = v[:2]      # partial preview
+                    else:
+                        trimmed[k] = v                      # full list (kpis, zones)
                 else:
                     trimmed[k] = v
+
+            # Pre-compute summaries so LLM never has to count/infer
+            if key == "inventory":
+                trimmed["inventory_summary_hint"] = _build_inventory_summary_hint(trimmed)
+            elif key == "alerts":
+                trimmed["alerts_summary_hint"] = _build_alerts_summary_hint(trimmed)
+
             snapshot[key] = trimmed
         else:
             snapshot[key] = value

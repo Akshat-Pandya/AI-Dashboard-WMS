@@ -32,10 +32,25 @@ low_stock
               "items below threshold", "which items are running low"
 
 inventory_lookup
-  → View inventory in ONE specific zone or search by SKU.
-  → Triggers: "show inventory zone A", "what's in zone B", "find SKU X",
-              "list items in zone C"
+  → Browse, filter, or search inventory by ANY column: zone, SKU, category,
+    location, status, or product name.
+  → Triggers:
+      "show inventory in zone A"         → zone filter
+      "what's in zone B"                 → zone filter
+      "find SKU-A1001"                   → sku filter
+      "show items in mechanical category"→ category filter
+      "list bearings"                    → category/name filter
+      "show available items"             → status filter
+      "items in location A-01-03"        → location filter
+      "show conveyors"                   → category/name filter
+      "list all motors"                  → category/name filter
+      "show reserved items"              → status filter
+      "hydraulics inventory"             → category filter
+      "what items are in the motors category" → category filter
+  → USE for ANY inventory browsing/filtering query regardless of which
+    column is being filtered.
   → DO NOT use for multi-zone comparison.
+  → DO NOT use when low_stock is the primary intent.
 
 zone_inventory_compare
   → Compare inventory metrics ACROSS 2+ zones side by side.
@@ -112,9 +127,9 @@ STRICT SINGLE-INTENT RULES
 
 These queries map to EXACTLY ONE intent — do not add extras:
 
-  "show distribution of orders"          → order_status          (NOT kpi_summary)
-  "orders by status"                     → order_status          (NOT kpi_summary)
-  "how many orders are pending"          → order_status          (NOT kpi_summary)
+  "show distribution of orders"          → order_status
+  "orders by status"                     → order_status
+  "how many orders are pending"          → order_status
   "show all outbound orders"             → order_status
   "show inbound shipments"               → inbound_activity
   "display inbound shipments trend"      → inbound_activity
@@ -126,6 +141,13 @@ These queries map to EXACTLY ONE intent — do not add extras:
   "show KPIs"                            → kpi_summary
   "warehouse overview"                   → warehouse_overview
   "low stock items"                      → low_stock
+  "show items in mechanical category"    → inventory_lookup
+  "list motors"                          → inventory_lookup
+  "show available inventory"             → inventory_lookup
+  "show inventory in zone A"             → inventory_lookup
+  "find SKU-A1001"                       → inventory_lookup
+  "show conveyors in zone A"             → inventory_lookup
+  "items in location A-01-03"            → inventory_lookup
 
 These queries map to EXACTLY TWO intents:
 
@@ -195,7 +217,6 @@ def classify_intent(query: str) -> IntentResult:
         if not scores:
             scores = [IntentScore(intent=Intent.UNKNOWN, confidence=0.0)]
 
-        # Normalize and sort
         scores   = _normalize_confidence(scores, query)
         filtered = [s for s in scores if s.confidence >= INTENT_CONFIDENCE_THRESHOLD]
 
@@ -206,7 +227,6 @@ def classify_intent(query: str) -> IntentResult:
             else:
                 filtered = [IntentScore(intent=Intent.UNSUPPORTED_WAREHOUSE, confidence=0.5)]
 
-        # Hard cap at MAX_INTENTS_PER_QUERY
         from app.ai.thresholds import MAX_INTENTS_PER_QUERY
         filtered = filtered[:MAX_INTENTS_PER_QUERY]
 
@@ -222,12 +242,6 @@ def classify_intent(query: str) -> IntentResult:
 
 
 def _normalize_confidence(scores: List[IntentScore], query: str) -> List[IntentScore]:
-    """
-    - Sort descending
-    - Vague short queries: cap at 0.75
-    - Secondary intents: decay by position
-    - Hard cap 0.95
-    """
     VAGUE_PATTERNS = [
         "anything", "what's going on", "how is", "give me", "tell me",
         "overview", "attention", "urgent", "everything", "right now",

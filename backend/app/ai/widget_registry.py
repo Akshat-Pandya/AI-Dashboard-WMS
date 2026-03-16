@@ -10,10 +10,11 @@ TO ADD A NEW WIDGET:
 DATA KEY RULES:
   - data_key must be the EXACT dot-path used by WidgetRenderer.resolvePath()
   - zone_comparison tool returns { zones: [...], summary: [...] }
-    → correct data_key is "zone_comparison" (the whole object), NOT "zone_comparison.zones"
-    → WidgetRenderer/adaptData handles extracting the summary array internally
+    → correct data_key is "zone_comparison" (the whole object)
+  - FALLBACK_MAP maps each tool_output key → (widget_type, correct data_key)
+    Every entry is explicit — no key inherits another key's data_key.
 """
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 WIDGET_REGISTRY: List[Dict[str, Any]] = [
     {
@@ -34,7 +35,7 @@ WIDGET_REGISTRY: List[Dict[str, Any]] = [
             "For overdue ASNs: 'overdue_asn.asns'. "
             "For stuck orders: 'stuck_orders.orders'."
         ),
-        "data_key":     "orders.orders",
+        "data_key":     "orders.orders",   # default — overridden per-key in FALLBACK_MAP
         "fallback_for": [
             "low_stock", "inventory", "stuck_orders",
             "active_tasks", "blocked_tasks", "overdue_asn", "orders",
@@ -104,8 +105,38 @@ WIDGET_REGISTRY: List[Dict[str, Any]] = [
     },
 ]
 
-# ── Derived lookup: tool_output key → (widget_type, data_key) ─────────────────
-FALLBACK_MAP: Dict[str, tuple] = {}
+# ── Per-intent canonical data_key overrides ───────────────────────────────────
+# These override the widget's default data_key for specific tool output keys.
+# This is necessary because TABLE serves many intents, each with a different
+# dot-path into tool_outputs (e.g. overdue_asn → "overdue_asn.asns",
+# not the TABLE default of "orders.orders").
+_DATA_KEY_OVERRIDES: Dict[str, str] = {
+    "low_stock":    "low_stock.items",
+    "inventory":    "inventory.items",
+    "stuck_orders": "stuck_orders.orders",
+    "active_tasks": "active_tasks.tasks",
+    "blocked_tasks":"blocked_tasks.tasks",
+    "overdue_asn":  "overdue_asn.asns",
+    "orders":       "orders.orders",
+    # Non-TABLE overrides (these already match their widget's data_key,
+    # listed here for completeness / explicitness)
+    "alerts":           "alerts.alerts",
+    "zone_comparison":  "zone_comparison",
+    "kpis":             "kpis.kpis",
+    "inbound":          "inbound.asns",
+    "overview":         "overview",
+}
+
+# ── Derived FALLBACK_MAP: tool_output key → (widget_type, canonical_data_key) ─
+FALLBACK_MAP: Dict[str, Tuple[str, str]] = {}
 for _w in WIDGET_REGISTRY:
     for _k in _w["fallback_for"]:
-        FALLBACK_MAP[_k] = (_w["type"], _w["data_key"])
+        # Use the per-intent override if available, else use widget's default data_key
+        _canonical = _DATA_KEY_OVERRIDES.get(_k, _w["data_key"])
+        FALLBACK_MAP[_k] = (_w["type"], _canonical)
+
+# ── All valid canonical data_keys (used by orchestrator scrubber) ─────────────
+# Includes both widget defaults AND per-intent overrides.
+CANONICAL_DATA_KEYS: set = set(_DATA_KEY_OVERRIDES.values()) | {
+    _w["data_key"] for _w in WIDGET_REGISTRY
+}
