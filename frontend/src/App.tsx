@@ -80,7 +80,7 @@ const App: React.FC = () => {
   const results = response?.resultsByIntent ?? [];
   const hasResults = results.length > 0;
   const tabLabels = hasResults
-    ? [...results.map((r) => `${r.intent.replace(/_/g, " ")} (${Math.round(r.confidence * 100)}%)`), "All Intents"]
+    ? [...results.map((r) => r.intent.replace(/_/g, " ")), "All Intents"]
     : [];
   const isAllIntentsTab = hasResults && activeTab === tabLabels.length - 1;
   const activeResult = !isAllIntentsTab ? results[activeTab] : undefined;

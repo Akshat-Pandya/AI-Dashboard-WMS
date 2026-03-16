@@ -29,28 +29,28 @@ const SAMPLE_QUERIES = [
 ];
 
 const INTENT_LABELS: Record<string, string> = {
-  order_status:           "Orders",
-  warehouse_alerts:       "Alerts",
-  low_stock:              "Low Stock",
-  inventory_lookup:       "Inventory",
+  order_status: "Orders",
+  warehouse_alerts: "Alerts",
+  low_stock: "Low Stock",
+  inventory_lookup: "Inventory",
   zone_inventory_compare: "Zone Compare",
-  warehouse_overview:     "Overview",
-  active_tasks:           "Tasks",
-  blocked_tasks:          "Blocked",
-  inbound_activity:       "Inbound",
-  overdue_asn:            "Overdue ASN",
-  kpi_summary:            "KPIs",
+  warehouse_overview: "Overview",
+  active_tasks: "Tasks",
+  blocked_tasks: "Blocked",
+  inbound_activity: "Inbound",
+  overdue_asn: "Overdue ASN",
+  kpi_summary: "KPIs",
 };
 
 const INTENT_COLORS: Record<string, string> = {
-  warehouse_alerts:       "#EF4444",
-  low_stock:              "#F59E0B",
-  order_status:           "#3B82F6",
-  warehouse_overview:     "#8B5CF6",
-  active_tasks:           "#10B981",
-  blocked_tasks:          "#EF4444",
-  inbound_activity:       "#06B6D4",
-  kpi_summary:            "#F97316",
+  warehouse_alerts: "#EF4444",
+  low_stock: "#F59E0B",
+  order_status: "#3B82F6",
+  warehouse_overview: "#8B5CF6",
+  active_tasks: "#10B981",
+  blocked_tasks: "#EF4444",
+  inbound_activity: "#06B6D4",
+  kpi_summary: "#F97316",
 };
 
 export const ChatPanel: React.FC<Props> = ({
@@ -62,7 +62,7 @@ export const ChatPanel: React.FC<Props> = ({
   onRunSaved,
   savedRefreshKey = 0,
 }) => {
-  const [input, setInput]       = useState("");
+  const [input, setInput] = useState("");
   const [dashboards, setDashboards] = useState<DashboardMeta[]>([]);
   const [fetching, setFetching] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -109,7 +109,7 @@ export const ChatPanel: React.FC<Props> = ({
   // Shared style applied to the scrollable list area when loading
   const listLockStyle: React.CSSProperties = loading
     ? { pointerEvents: "none", opacity: 0.4, transition: "opacity 0.2s" }
-    : { pointerEvents: "auto", opacity: 1,   transition: "opacity 0.2s" };
+    : { pointerEvents: "auto", opacity: 1, transition: "opacity 0.2s" };
 
   // ── Header ────────────────────────────────────────────────────────────────
   const Header = () => (
@@ -303,7 +303,7 @@ export const ChatPanel: React.FC<Props> = ({
           )}
 
           {!fetching && dashboards.map((d) => {
-            const isActive    = activeQuery === d.query_text;
+            const isActive = activeQuery === d.query_text;
             const intentColor = INTENT_COLORS[d.intent_name ?? ""] ?? "#B0B8C4";
             const intentLabel = INTENT_LABELS[d.intent_name ?? ""] ?? d.intent_name?.replace(/_/g, " ") ?? "";
 
@@ -347,7 +347,8 @@ export const ChatPanel: React.FC<Props> = ({
                     fontSize: 13, fontWeight: isActive ? 700 : 500,
                     color: isActive ? "#FFFFFF" : "#F3F4F6",
                     margin: "0 0 4px",
-                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
                     lineHeight: 1.3,
                   }}>
                     {d.label || d.query_text}
@@ -454,7 +455,7 @@ export const ChatPanel: React.FC<Props> = ({
             <div style={{ padding: "0 14px 8px" }}>
               {[...history].reverse().map((q, i) => {
                 const isActive = q === activeQuery;
-                const num      = history.length - i;
+                const num = history.length - i;
                 return (
                   <div
                     key={i}
