@@ -2,6 +2,7 @@
 orchestrator.py
 Full pipeline:
   1. Classify intents
+  1.2 Suppress redundant secondary intents
   1.5 Early rejection for irrelevant queries
   2. Keyword fallback     (if unknown)
   3. Free SQL fallback    (if still unknown/unsupported)
@@ -20,13 +21,13 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.ai.intent_llm          import classify_intent
-from app.ai.param_llm           import extract_params
+from app.ai.param_llm           import extract_params, filter_intents
 from app.ai.summary_llm         import generate_summary_and_widgets
 from app.ai.free_query_llm      import generate_free_query
 from app.ai.free_query_executor import execute_free_sql
 from app.ai.free_summary_llm    import summarize_free_result
 from app.ai.keyword_fallback    import keyword_fallback
-from app.ai.widget_registry     import FALLBACK_MAP
+from app.ai.widget_registry     import FALLBACK_MAP, CANONICAL_DATA_KEYS
 
 from app.core.schemas import Intent, IntentScore, QueryResponse, WidgetConfig
 from app.tools.registry import INTENT_DATA_KEY
@@ -129,6 +130,10 @@ def orchestrate(
     intent_result = classify_intent(query)
     intents       = intent_result.intents
     all_unknown   = all(i.intent == Intent.UNKNOWN for i in intents)
+
+    # ── Step 1.2: Suppress redundant secondary intents ────────────────────────
+    # e.g. overdue_asn suppresses inbound_activity, low_stock suppresses inventory_lookup
+    intents = filter_intents(intents)
 
     # ── Step 1.5: Early rejection — irrelevant queries ────────────────────────
     has_irrelevant = any(i.intent == Intent.IRRELEVANT_QUERY for i in intents)
@@ -282,18 +287,35 @@ def _ensure_widgets(
 ) -> List[WidgetConfig]:
     """
     Safety net: inject fallback widgets for intents with data but no widget.
+    Also scrubs any widget whose data_key was hallucinated by the summary LLM
+    (i.e. not a canonical key in the widget registry).
     Only called for non-trend queries.
     """
     if not tool_outputs:
         return widgets
 
-    correctly_covered: set = set()
+    # All valid canonical data_keys from the registry (includes per-intent overrides)
+    canonical_data_keys: set = CANONICAL_DATA_KEYS
+
+    # ── Step 1: Scrub hallucinated data_keys ─────────────────────────────────
+    # e.g. summary LLM returns "overdue_asn.asns_COUNT" → not canonical → drop it
+    # so the safety net below can inject the correct "overdue_asn.asns" widget.
+    clean_widgets: List[WidgetConfig] = []
     for w in widgets:
+        if w.data_key in canonical_data_keys:
+            clean_widgets.append(w)
+        else:
+            print(f"  🗑 Scrubbing widget with hallucinated data_key={w.data_key!r}")
+
+    # ── Step 2: Determine what is correctly covered after scrubbing ───────────
+    correctly_covered: set = set()
+    for w in clean_widgets:
         for tool_key, (_, canonical_dk) in FALLBACK_MAP.items():
             if w.data_key == canonical_dk:
                 correctly_covered.add(tool_key)
                 break
 
+    # ── Step 3: Inject missing widgets ───────────────────────────────────────
     extras: List[WidgetConfig] = []
 
     for score in intents:
@@ -321,7 +343,7 @@ def _ensure_widgets(
         ))
         correctly_covered.add(data_key)
 
-    return widgets + extras
+    return clean_widgets + extras
 
 
 def _sort_widgets(widgets: List[WidgetConfig]) -> List[WidgetConfig]:
