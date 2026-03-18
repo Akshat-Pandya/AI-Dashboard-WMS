@@ -54,9 +54,7 @@ KNOWN_CATEGORIES = {
 # zone comparison chart AND the tabular item list — keep both intents.
 _INTENT_SUPPRESSION: Dict[str, set] = {
     "low_stock":          {"inventory_lookup"},
-    "overdue_asn":          {"inbound_activity"},
-    "zone_inventory_compare":          {"inventory_lookup"},
-    # "warehouse_overview": {"inventory_lookup", "kpi_summary"},
+    "warehouse_overview": {"inventory_lookup", "kpi_summary"},
 }
 
 # ── Known zones in this warehouse — used for fuzzy spelling correction ────────
@@ -214,6 +212,8 @@ Return {} if none of the above are found.
 Output ONLY valid JSON. No explanation. No extra keys.
 
 EXAMPLES:
+Query: "show top 5 critical alerts"
+Output: {"limit": 5, "severity": "critical"}
 
 Query: "show pending orders"
 Output: {"order_status": "pending"}
