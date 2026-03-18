@@ -54,9 +54,11 @@ function renderCell(cell: unknown, _colIndex: number): React.ReactNode {
       <span style={{
         fontFamily: "'Barlow Condensed', sans-serif",
         fontWeight: 700, fontSize: 15,
-        color: cell < 15 ? R.red : R.textPrimary,
+        // color: cell < 15 ? R.red : R.textPrimary,
+        color: R.textPrimary,
+
       }}>
-        {cell < 15 && <span style={{ marginRight: 3, fontSize: 10 }}>▼</span>}
+        {/* {cell < 15 && <span style={{ marginRight: 3, fontSize: 10 }}>▼</span>} */}
         {cell}
       </span>
     );
