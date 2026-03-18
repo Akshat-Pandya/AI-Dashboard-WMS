@@ -8,29 +8,21 @@ from pydantic import BaseModel
 # ─────────────────────────────────────────────
 
 class Intent(str, Enum):
-    WAREHOUSE_OVERVIEW     = "warehouse_overview"
-    LOW_STOCK              = "low_stock"
-    INVENTORY_LOOKUP       = "inventory_lookup"
-    ZONE_INVENTORY_COMPARE = "zone_inventory_compare"
-    ORDER_STATUS           = "order_status"
-    ORDERS_STUCK           = "orders_stuck"
-    ACTIVE_TASKS           = "active_tasks"
-    BLOCKED_TASKS          = "blocked_tasks"
-    INBOUND_ACTIVITY       = "inbound_activity"
-    OVERDUE_ASN            = "overdue_asn"
-    WAREHOUSE_ALERTS       = "warehouse_alerts"
-    KPI_SUMMARY            = "kpi_summary"
-
-    # ── Fallback intents ──────────────────────────────────────────────────────
-    # UNKNOWN must stay — intent_llm.py and orchestrator.py reference it
-    # as the safe default when the LLM returns an unrecognised string,
-    # or when the LLM/network call fails entirely.
-    # Do NOT comment it out — that causes AttributeError at runtime.
-    UNKNOWN               = "unknown"                     # generic fallback, keep for safety
-
-    # These two replace UNKNOWN's dual role:
-    IRRELEVANT_QUERY      = "irrelevant_query"            # off-topic, no DB needed, early exit
-    UNSUPPORTED_WAREHOUSE = "unsupported_warehouse_query" # warehouse-related but no mapped tool → free SQL
+    WAREHOUSE_OVERVIEW      = "warehouse_overview"
+    LOW_STOCK               = "low_stock"
+    INVENTORY_LOOKUP        = "inventory_lookup"
+    ZONE_INVENTORY_COMPARE  = "zone_inventory_compare"
+    ORDER_STATUS            = "order_status"
+    ORDERS_STUCK            = "orders_stuck"
+    ACTIVE_TASKS            = "active_tasks"
+    BLOCKED_TASKS           = "blocked_tasks"
+    INBOUND_ACTIVITY        = "inbound_activity"
+    OVERDUE_ASN             = "overdue_asn"
+    WAREHOUSE_ALERTS        = "warehouse_alerts"
+    KPI_SUMMARY             = "kpi_summary"
+    UNKNOWN                 = "unknown"
+    IRRELEVANT_QUERY        = "irrelevant_query"
+    UNSUPPORTED_WAREHOUSE   = "unsupported_warehouse_query"
 
 
 class IntentScore(BaseModel):
@@ -263,11 +255,12 @@ class SummaryResponse(BaseModel):
 # ─────────────────────────────────────────────
 
 class QueryResponse(BaseModel):
-    query: str
+    query:   str
     summary: str
     widgets: List[WidgetConfig]
-    data: Dict[str, Any]
+    data:    Dict[str, Any]
     intents: List[Dict[str, Any]] = []
+    params:  Optional[Dict[str, Any]] = None   # echoed back so frontend can use for refresh
 
 
 # ─────────────────────────────────────────────

@@ -45,6 +45,7 @@ export interface WMSResponse {
   intents: IntentScore[];
   widgets: WidgetConfig[];
   data: Record<string, unknown>;
+  params?: Record<string, unknown> | null;  // echoed from backend, used for refresh
   // Derived fields — built client-side from intents (see buildTabResults)
   candidates?: CandidateIntent[];
   selectedIntent?: string;

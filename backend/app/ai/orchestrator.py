@@ -231,6 +231,7 @@ def orchestrate(
         widgets=summary_response.widgets,
         data=tool_outputs,
         intents=[{"intent": s.intent.value, "confidence": s.confidence} for s in intents],
+        params=merged_params or None,   # echo back so frontend can use for refresh
     )
 
 

@@ -15,7 +15,7 @@ import { R }                from "./tokens/brand";
 type Page = "query" | "saved";
 
 const BASE_URL         = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
-const REFRESH_INTERVAL = 10_000; // ms — auto-refresh every 10 seconds
+const REFRESH_INTERVAL = 30_000; // ms — auto-refresh every 10 seconds
 
 const App: React.FC = () => {
   const [response, setResponse]               = useState<WMSResponse | null>(null);
@@ -33,34 +33,58 @@ const App: React.FC = () => {
   const activeSavedIdRef  = useRef<string | null>(null); // set when a saved dashboard is active
 
   // ── Silent background refresh ──────────────────────────────────────────────
-  // Re-runs the active query every REFRESH_INTERVAL ms.
-  // Does NOT show the full loading spinner — uses a subtle "refreshing" state.
+  // Re-runs SQL tools only — no intent/param/summary LLM calls.
+  // Uses POST /query/refresh which accepts the known intents + params and
+  // only re-executes the SQL queries, returning fresh data with the same
+  // widgets and summary.
+  // Falls back to full /query if no current response exists (first load).
   // Pauses when the browser tab is hidden (Page Visibility API).
   const silentRefresh = useCallback(async () => {
     const query   = activeQueryRef.current;
     const savedId = activeSavedIdRef.current;
     if (!query || loading) return;
-    if (document.hidden) return; // tab not visible — skip
+    if (document.hidden) return;
 
     setAutoRefreshing(true);
     try {
-      let raw: WMSResponse;
+      let updated: WMSResponse;
+
       if (savedId) {
-        // Saved dashboard — re-run via dashboard endpoint for correct params
+        // Saved dashboard — always use the dashboard run endpoint
         const res = await fetch(`${BASE_URL}/dashboards/${savedId}/run`);
         if (!res.ok) return;
-        raw = buildTabResults(await res.json());
+        updated = buildTabResults(await res.json());
+      } else if (response) {
+        // We have a current response — use the lightweight refresh endpoint.
+        // Pass current intents, params, widgets and summary so the backend
+        // can skip all LLM steps and only re-run SQL tools.
+        const res = await fetch(`${BASE_URL}/query/refresh`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query:   query,
+            intents: response.intents ?? [],
+            params:  response.params  ?? null,   // echoed back from backend on first run
+            widgets: (response.resultsByIntent ?? []).flatMap(
+              (r) => r.widgets ?? []
+            ),
+            summary: response.summary ?? "",
+          }),
+        });
+        if (!res.ok) return;
+        updated = buildTabResults(await res.json());
       } else {
-        // Regular query
-        raw = await queryWMS(query);
+        // No current response yet — fall back to full query
+        updated = await queryWMS(query);
       }
-      setResponse(raw);
+
+      setResponse(updated);
     } catch {
       // Silently ignore network errors during background refresh
     } finally {
       setAutoRefreshing(false);
     }
-  }, [loading]);
+  }, [loading, response]);
 
   // Register / clear interval whenever there is an active query
   useEffect(() => {

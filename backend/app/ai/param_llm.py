@@ -260,7 +260,8 @@ def extract_params(query: str, intents: List[IntentScore]) -> Dict[str, Any]:
 
     # Step 2: Zones via regex — zero hallucination
     zones_extracted = _extract_zones_regex(query)
-    print(f"📍 Regex zone extraction: {zones_extracted}")
+    if zones_extracted:
+        print(f"📍 Regex zone extraction: {zones_extracted}")
 
     # Step 3: Category via regex — reliable for known terms
     category_extracted = _extract_category_regex(query)
@@ -271,8 +272,8 @@ def extract_params(query: str, intents: List[IntentScore]) -> Dict[str, Any]:
     severity_extracted = _extract_severity_regex(query)
     if severity_extracted:
         print(f"🚨 Regex severity extraction: {severity_extracted!r}")
-    else:
-        print("🚨 No severity in query — will show ALL alerts")
+    # else:
+    #     print("🚨 No severity in query — will show ALL alerts")
 
     # Step 4: LLM for remaining params (limit, status, sku, location...)
     llm_params = _call_llm_for_non_zone_params(query, intents)
