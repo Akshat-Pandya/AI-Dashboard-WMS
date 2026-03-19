@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DB_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:root@localhost:3307/wms")
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 CSV_DIR = os.path.join(BASE_DIR, "db", "seed", "csv")
 
 

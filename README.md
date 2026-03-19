@@ -143,7 +143,7 @@ DB_PASSWORD=your_password
 
 # Ollama
 OLLAMA_URL=http://localhost:11434/api/generate
-MODEL_NAME=qwen2.5:7b
+MODEL_NAME=llama3.1:8b
 ```
 
 ### 5. Pull the Ollama model
@@ -152,10 +152,7 @@ MODEL_NAME=qwen2.5:7b
 # Start Ollama
 ollama serve
 
-# In a new terminal — pull the model
-ollama pull qwen2.5:7b
-
-# Or alternatively
+# Pull the model
 ollama pull llama3.1:8b
 ```
 
@@ -228,7 +225,7 @@ Three terminals required, started in this order:
 | `DB_USER` | Database user |
 | `DB_PASSWORD` | Database password |
 | `OLLAMA_URL` | Ollama API endpoint |
-| `MODEL_NAME` | Ollama model name (e.g. `qwen2.5:7b`) |
+| `MODEL_NAME` | Ollama model name (e.g. `llama3.1:8b`) |
 
 ### Frontend — `frontend/.env`
 

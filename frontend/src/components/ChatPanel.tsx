@@ -158,29 +158,6 @@ export const ChatPanel: React.FC<Props> = ({
         }}>
           WMS Dashboard
         </span>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 5,
-          background: "#0F2A1A",
-          border: "1px solid #1A4D2E",
-          borderRadius: 20,
-          padding: "2px 8px",
-        }}>
-          <div style={{
-            width: 5, height: 5, borderRadius: "50%",
-            background: loading ? "#F59E0B" : "#22C55E",
-            boxShadow: loading ? "0 0 5px #F59E0B88" : "0 0 5px #22C55E88",
-            transition: "background 0.3s, box-shadow 0.3s",
-          }} />
-          <span style={{
-            fontFamily: "'Barlow', sans-serif",
-            fontSize: 9, fontWeight: 800,
-            color: loading ? "#F59E0B" : "#22C55E",
-            letterSpacing: "0.1em",
-            transition: "color 0.3s",
-          }}>
-            {loading ? "RUNNING" : "LIVE"}
-          </span>
-        </div>
       </div>
     </div>
   );

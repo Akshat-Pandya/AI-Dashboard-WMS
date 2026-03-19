@@ -16,7 +16,8 @@ from threading import Lock
 from typing import Any, Dict, Optional, Tuple
 
 CACHE_SIZE        = 15
-CACHE_TTL_SECONDS = 9   # expire just under the 10s frontend refresh interval
+CACHE_TTL_SECONDS = 300  # 5 minutes — safe to cache long since auto-refresh
+                          # uses /query/refresh (tools only) and never hits this cache
 
 
 class QueryCache:

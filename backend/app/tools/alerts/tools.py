@@ -40,10 +40,14 @@ def get_alerts(db: Session, params: Optional[Dict[str, Any]] = None) -> Dict[str
 
     # When no severity filter, order by severity priority (critical first)
     # then by timestamp so the most urgent and recent appear first.
+    # order_clause = (
+    #     "ORDER BY timestamp DESC"
+    #     if severity
+    #     else "ORDER BY FIELD(LOWER(severity), 'critical','high','warning','medium','info','low'), timestamp DESC"
+    # )
+
     order_clause = (
-        "ORDER BY timestamp DESC"
-        if severity
-        else "ORDER BY FIELD(LOWER(severity), 'critical','high','warning','medium','info','low'), timestamp DESC"
+        "ORDER BY id DESC"
     )
 
     sql = f"""

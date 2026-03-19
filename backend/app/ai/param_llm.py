@@ -185,35 +185,44 @@ def _fuzzy_correct_query(query: str) -> str:
 
 
 # ── System prompt — zones deliberately excluded (handled by regex) ────────────
+# ── System prompt — zones deliberately excluded (handled by regex) ────────────
 SYSTEM_PROMPT = """
 You are a parameter extraction engine for a Warehouse Management System.
 
-Extract ONLY these parameters if explicitly present in the query:
+Extract ONLY these parameters if they are EXPLICITLY and CLEARLY stated in the query:
 - sku              : product SKU code (e.g. "SKU-A1001")
-- severity         : DO NOT extract — severity is handled separately
-- order_status     : ONLY for order queries. One of: pending, picking, packed,
-                     shipped, cancelled.
-                     "outbound", "inbound", "all" are NOT statuses.
-- task_status      : ONLY for task queries. One of: pending, active, blocked,
-                     completed.
-- inventory_status : ONLY for inventory queries. One of: available, reserved,
-                     damaged, quarantine.
-- category         : inventory category name (e.g. "Mechanical", "Bearings",
-                     "Motors", "Hydraulics", "Safety", "Electrical").
-                     Extract even if user says "mechanical category",
-                     "motors category", "show bearings", "list conveyors".
-                     Return title-cased string e.g. "Mechanical", "Motors".
+- order_status     : ONLY for order queries with an explicit status word.
+                     One of: pending, picking, packed, shipped, cancelled.
+                     "outbound", "inbound", "all", "the" are NOT statuses.
+- task_status      : ONLY for task queries with an explicit status word.
+                     One of: pending, active, blocked, completed.
+- inventory_status : ONLY for inventory queries with an explicit status word.
+                     One of: available, reserved, damaged, quarantine.
+- category         : inventory category name ONLY if explicitly mentioned.
+                     e.g. "mechanical category", "show bearings", "list motors".
+                     DO NOT infer category from general words like "inventory".
 - location         : specific bin/location code (e.g. "A-01-03", "B-02-07").
 - limit            : integer number of results (e.g. "top 10" → 10)
 - hours_threshold  : integer hours for stuck/overdue detection
 
-DO NOT extract zone or zones — those are handled separately.
-Return {} if none of the above are found.
-Output ONLY valid JSON. No explanation. No extra keys.
+CRITICAL RULES:
+- If no parameter is explicitly mentioned, return {}
+- DO NOT invent or infer parameters that are not in the query
+- DO NOT extract zone, zones, or severity — those are handled separately
+- Words like "the", "all", "show", "list", "inventory" are NOT parameters
 
 EXAMPLES:
-Query: "show top 5 critical alerts"
-Output: {"limit": 5, "severity": "critical"}
+Query: "show the inventory"
+Output: {}
+
+Query: "list inventory items"
+Output: {}
+
+Query: "show all alerts"
+Output: {}
+
+Query: "show inventory"
+Output: {}
 
 Query: "show pending orders"
 Output: {"order_status": "pending"}
@@ -246,6 +255,13 @@ Query: "show inventory of zone A"
 Output: {}
 """
 
+# ── Whitelist of keys the LLM is allowed to return ───────────────────────────
+# Any key outside this set is hallucinated and will be dropped.
+_ALLOWED_LLM_KEYS = {
+    "sku", "order_status", "task_status", "inventory_status",
+    "category", "location", "limit", "hours_threshold",
+}
+
 
 # =============================================================================
 #  PUBLIC ENTRY POINT
@@ -260,8 +276,7 @@ def extract_params(query: str, intents: List[IntentScore]) -> Dict[str, Any]:
 
     # Step 2: Zones via regex — zero hallucination
     zones_extracted = _extract_zones_regex(query)
-    if zones_extracted:
-        print(f"📍 Regex zone extraction: {zones_extracted}")
+    print(f"📍 Regex zone extraction: {zones_extracted}")
 
     # Step 3: Category via regex — reliable for known terms
     category_extracted = _extract_category_regex(query)
@@ -272,9 +287,7 @@ def extract_params(query: str, intents: List[IntentScore]) -> Dict[str, Any]:
     severity_extracted = _extract_severity_regex(query)
     if severity_extracted:
         print(f"🚨 Regex severity extraction: {severity_extracted!r}")
-    # else:
-    #     print("🚨 No severity in query — will show ALL alerts")
-
+    
     # Step 4: LLM for remaining params (limit, status, sku, location...)
     llm_params = _call_llm_for_non_zone_params(query, intents)
 
@@ -447,7 +460,7 @@ def _extract_severity_regex(query: str) -> str:
 # =============================================================================
 
 def _call_llm_for_non_zone_params(query: str, intents: List[IntentScore]) -> Dict[str, Any]:
-    """Call LLM only for: limit, severity, status variants, sku, location, hours_threshold."""
+    """Call LLM only for: limit, status variants, sku, location, hours_threshold."""
     intent_list = ", ".join(s.intent.value for s in intents)
 
     prompt = f"""{SYSTEM_PROMPT}
@@ -455,7 +468,7 @@ def _call_llm_for_non_zone_params(query: str, intents: List[IntentScore]) -> Dic
 Query: "{query}"
 Detected intents: {intent_list}
 
-Return ONLY JSON.
+Return ONLY JSON. If nothing to extract, return {{}}.
 """
 
     payload = {
@@ -465,7 +478,7 @@ Return ONLY JSON.
         "format": "json",
         "options": {
             "temperature": 0,
-            "num_predict": 80,
+            "num_predict": 40,   # tight limit — real params need few tokens, prevents padding
             "top_p": 0.9,
         },
     }
@@ -479,9 +492,17 @@ Return ONLY JSON.
         params = _extract_json(raw)
         params = _validate_and_clean(params)
 
-        # Hard-remove zone keys — never let LLM override regex
-        params.pop("zone", None)
-        params.pop("zones", None)
+        # Whitelist — drop any key the LLM invented outside the allowed set
+        hallucinated = {k for k in params if k not in _ALLOWED_LLM_KEYS}
+        if hallucinated:
+            print(f"🚫 Dropping hallucinated LLM keys: {hallucinated}")
+            for k in hallucinated:
+                del params[k]
+
+        # Hard-remove zone/severity keys — those are handled by regex
+        params.pop("zone",     None)
+        params.pop("zones",    None)
+        params.pop("severity", None)
 
         return params
 

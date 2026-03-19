@@ -14,3 +14,23 @@ TSK012,put-away,queued,medium,OP-113,Deepak Yadav,Zone B,DOCK-2,B-04-02,ASN003,2
 TSK013,packing,queued,low,OP-114,Ritu Kapoor,Zone D,D-PACK-02,D-OUT-02,ORD008,2026-02-17T12:00:00Z,,,20,false,
 TSK014,replenishment,queued,high,OP-115,Manoj Kumar,Zone A,A-07-02,A-02-07,INV025,2026-02-17T12:10:00Z,,,14,false,
 TSK015,maintenance,in-progress,low,OP-116,Anil Joshi,Zone C,C-01-01,C-01-01,ZONE-C,2026-02-17T12:20:00Z,2026-02-17T12:25:00Z,,40,false,
+TSK016,picking,queued,high,OP-117,Aditya Sharma,Zone A,A-03-02,D-STAGE-01,ORD011,2026-02-18T07:30:00Z,,,22,false,
+TSK017,put-away,in-progress,medium,OP-118,Meena Reddy,Zone B,DOCK-1,B-06-03,ASN009,2026-02-18T08:00:00Z,2026-02-18T08:10:00Z,,18,false,
+TSK018,packing,queued,low,OP-119,Kiran Nair,Zone D,D-PACK-03,D-OUT-01,ORD013,2026-02-18T08:20:00Z,,,20,false,
+TSK019,replenishment,in-progress,high,OP-120,Ravi Chauhan,Zone A,A-04-01,A-01-02,INV031,2026-02-18T08:40:00Z,2026-02-18T08:50:00Z,,15,false,
+TSK020,cycle-count,queued,medium,OP-121,Ananya Gupta,Zone C,C-03-03,C-03-03,INV032,2026-02-18T09:00:00Z,,,12,false,
+TSK021,picking,blocked,high,OP-122,Sachin Verma,Zone B,B-02-04,D-STAGE-02,ORD015,2026-02-18T09:10:00Z,,,30,true,Item damaged — quality check pending
+TSK022,loading,queued,medium,OP-123,Varun Singh,Zone D,D-STAGE-03,DOCK-OUT-01,ORD014,2026-02-18T09:25:00Z,,,25,false,
+TSK023,unloading,in-progress,medium,OP-124,Neeraj Mishra,Zone D,DOCK-2,D-RECV-02,ASN010,2026-02-18T09:40:00Z,2026-02-18T09:45:00Z,,35,false,
+TSK024,put-away,blocked,medium,OP-125,Pallavi Joshi,Zone C,DOCK-4,C-05-01,ASN014,2026-02-18T10:00:00Z,,,20,true,Location full — awaiting clearance
+TSK025,packing,in-progress,high,OP-126,Rohit Agarwal,Zone D,D-PACK-01,D-OUT-03,ORD017,2026-02-18T10:15:00Z,2026-02-18T10:20:00Z,,28,false,
+TSK026,replenishment,queued,high,OP-127,Sanjay Kumar,Zone A,A-06-02,A-02-05,INV041,2026-02-18T10:30:00Z,,,16,false,
+TSK027,cycle-count,in-progress,low,OP-128,Divya Menon,Zone C,C-04-02,C-04-02,INV045,2026-02-18T10:45:00Z,2026-02-18T10:50:00Z,,14,false,
+TSK028,picking,queued,urgent,OP-129,Harsh Vardhan,Zone B,B-03-01,D-STAGE-01,ORD018,2026-02-18T11:00:00Z,,,26,false,
+TSK029,put-away,queued,medium,OP-130,Ashwini Patil,Zone B,DOCK-3,B-07-02,ASN017,2026-02-18T11:10:00Z,,,18,false,
+TSK030,loading,in-progress,medium,OP-131,Akash Singh,Zone D,D-STAGE-02,DOCK-OUT-02,ORD019,2026-02-18T11:20:00Z,2026-02-18T11:25:00Z,,24,false,
+TSK031,unloading,queued,low,OP-132,Nikita Sharma,Zone D,DOCK-5,D-RECV-03,ASN018,2026-02-18T11:35:00Z,,,30,false,
+TSK032,packing,queued,medium,OP-133,Ramesh Yadav,Zone D,D-PACK-02,D-OUT-01,ORD023,2026-02-18T11:50:00Z,,,22,false,
+TSK033,replenishment,blocked,high,OP-134,Sunil Kumar,Zone A,A-08-01,A-03-02,INV052,2026-02-18T12:00:00Z,,,15,true,Source location empty — awaiting inbound
+TSK034,cycle-count,queued,low,OP-135,Pooja Sharma,Zone C,C-06-01,C-06-01,INV056,2026-02-18T12:10:00Z,,,10,false,
+TSK035,maintenance,in-progress,medium,OP-136,Vikas Jain,Zone B,B-01-01,B-01-01,ZONE-B,2026-02-18T12:20:00Z,2026-02-18T12:25:00Z,,45,false,

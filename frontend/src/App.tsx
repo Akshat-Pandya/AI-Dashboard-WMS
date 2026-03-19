@@ -15,7 +15,7 @@ import { R }                from "./tokens/brand";
 type Page = "query" | "saved";
 
 const BASE_URL         = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
-const REFRESH_INTERVAL = 30_000; // ms — auto-refresh every 10 seconds
+const REFRESH_INTERVAL = 30_000; // ms — auto-refresh every 30 seconds
 
 const App: React.FC = () => {
   const [response, setResponse]               = useState<WMSResponse | null>(null);
@@ -26,7 +26,8 @@ const App: React.FC = () => {
   const [drawerOpen, setDrawerOpen]           = useState(false);
   const [page, setPage]                       = useState<Page>("query");
   const [savedRefreshKey, setSavedRefreshKey] = useState(0);
-  const [autoRefreshing, setAutoRefreshing]   = useState(false); // subtle indicator
+  const [autoRefreshing, setAutoRefreshing]       = useState(false);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
 
   // Ref so the interval callback always sees the latest query without re-registering
   const activeQueryRef    = useRef<string>("");
@@ -43,6 +44,7 @@ const App: React.FC = () => {
     const query   = activeQueryRef.current;
     const savedId = activeSavedIdRef.current;
     if (!query || loading) return;
+    if (!autoRefreshEnabled) return;
     if (document.hidden) return;
 
     setAutoRefreshing(true);
@@ -84,7 +86,7 @@ const App: React.FC = () => {
     } finally {
       setAutoRefreshing(false);
     }
-  }, [loading, response]);
+  }, [loading, response, autoRefreshEnabled]);
 
   // Register / clear interval whenever there is an active query
   useEffect(() => {
@@ -191,7 +193,7 @@ const App: React.FC = () => {
                 color: "#9CA3AF", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 3px",
                 display: "flex", alignItems: "center", gap: 6,
               }}>
-                Active Query
+                Query
                 {/* Subtle pulse dot while background refresh is running */}
                 {autoRefreshing && (
                   <span style={{
@@ -205,14 +207,14 @@ const App: React.FC = () => {
               <p style={{
                 fontFamily: "'Barlow', sans-serif", fontSize: 14, color: "#111827",
                 margin: 0, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-              }}>"{response.query}"</p>
+              }}>{response.query}</p>
             </div>
             <SaveButton
               query={response.query}
               intentName={response.selectedIntent}
               onSaved={() => setSavedRefreshKey((k) => k + 1)}
             />
-            {/* Manual refresh button — re-runs the active query on demand */}
+            {/* Manual refresh button */}
             <button
               onClick={silentRefresh}
               disabled={autoRefreshing || loading}
@@ -237,24 +239,49 @@ const App: React.FC = () => {
               }}
             >
               <span style={{
-                display: "inline-block",
-                fontSize: 13,
+                display: "inline-block", fontSize: 13,
                 color: autoRefreshing ? "#22C55E" : "#6B7280",
                 animation: autoRefreshing ? "spin 0.8s linear infinite" : "none",
                 transformOrigin: "center",
-              }}>
-                ↻
-              </span>
+              }}>↻</span>
               <span style={{
-                fontFamily: "'Barlow', sans-serif",
-                fontSize: 10, fontWeight: 700,
+                fontFamily: "'Barlow', sans-serif", fontSize: 10, fontWeight: 700,
                 color: autoRefreshing ? "#22C55E" : "#6B7280",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
+                letterSpacing: "0.08em", textTransform: "uppercase",
               }}>
                 {autoRefreshing ? "Refreshing…" : "Refresh"}
               </span>
             </button>
+
+            {/* Auto-refresh toggle */}
+            <button
+              onClick={() => setAutoRefreshEnabled((v) => !v)}
+              title={autoRefreshEnabled ? "Auto-refresh on — click to disable" : "Auto-refresh off — click to enable"}
+              style={{
+                flexShrink: 0,
+                display: "flex", alignItems: "center", gap: 6,
+                background: autoRefreshEnabled ? "#F0FDF4" : "#F9FAFB",
+                border: `1px solid ${autoRefreshEnabled ? "#86EFAC" : "#E5E7EB"}`,
+                borderRadius: 4,
+                padding: "6px 12px",
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              <span style={{
+                width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+                background: autoRefreshEnabled ? "#22C55E" : "#D1D5DB",
+                transition: "background 0.2s",
+              }} />
+              <span style={{
+                fontFamily: "'Barlow', sans-serif", fontSize: 10, fontWeight: 700,
+                color: autoRefreshEnabled ? "#15803D" : "#9CA3AF",
+                letterSpacing: "0.08em", textTransform: "uppercase",
+              }}>
+                Auto
+              </span>
+            </button>
+
             <div style={{ width: 44 }} />
           </div>
 
@@ -292,7 +319,7 @@ const App: React.FC = () => {
             </p>
           </div>
         ) : (
-          <ResultsPanel response={null} loading={false} />
+          <ResultsPanel />
         )
       )}
     </div>

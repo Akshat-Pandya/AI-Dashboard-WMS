@@ -4,3 +4,11 @@ ALT002,error,4 Tasks Blocked in Zone B,"Put-away tasks blocked due to occupied d
 ALT003,warning,Overdue Inbound Shipment,"ASN-2026-1198 from Bosch Automation Parts is 20 hours overdue.",inbound,2026-02-17T10:00:00Z,false,
 ALT004,warning,6 SKUs Below Reorder Point,"Bearings, Safety equipment, and Pneumatics categories have critically low stock levels.",inventory,2026-02-17T08:00:00Z,true,
 ALT005,info,Shift Change at 14:00,"Afternoon shift starts at 14:00. 12 operators scheduled.",staffing,2026-02-17T07:00:00Z,true,
+ALT006,critical,Zone E Chemical Spill Detected,"Hazmat sensors detected a minor chemical spill near E-02-01. Immediate containment required.",safety,2026-02-18T09:20:00Z,false,Zone E
+ALT007,error,Picking Delays in Zone A,"Multiple high-priority picking tasks delayed due to operator shortage in Zone A.",operations,2026-02-18T10:05:00Z,false,Zone A
+ALT008,warning,Dock 3 Congestion,"Inbound and outbound trucks waiting at Dock 3. Potential delays expected.",logistics,2026-02-18T10:30:00Z,false,Zone D
+ALT009,warning,Low Battery on Equipment,"Forklift FB-48V battery levels below 20%. Charging required to avoid downtime.",maintenance,2026-02-18T11:00:00Z,false,Zone D
+ALT010,info,Daily Cycle Count Scheduled,"Cycle count scheduled for Zone B at 15:00. Prepare inventory verification.",inventory,2026-02-18T07:30:00Z,true,Zone B
+ALT011,info,Daily Cycle Count Scheduled,"Cycle count scheduled for Zone B at 15:00. Prepare inventory verification.",inventory,2026-02-18T07:30:00Z,true,Zone B
+ALT012,info,Daily Cycle Count Scheduled,"Cycle count scheduled for Zone B at 15:00. Prepare inventory verification.",inventory,2026-02-18T07:30:00Z,true,Zone B
+ALT013,info,Daily Cycle Count Scheduled,"Cycle count scheduled for Zone B at 15:00. Prepare inventory verification.",inventory,2026-02-18T07:30:00Z,true,Zone B

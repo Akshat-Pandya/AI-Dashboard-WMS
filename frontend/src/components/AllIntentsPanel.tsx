@@ -13,7 +13,6 @@ export const AllIntentsPanel: React.FC<Props> = ({ response }) => (
 
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {(response.candidates ?? []).map((c, i) => {
-        const result = (response.resultsByIntent ?? []).find((r) => r.intent === c.name);
         const isSelected = c.name === response.selectedIntent;
         const pct = Math.round(c.confidence * 100);
         const confidenceColor = pct > 70 ? R.green : pct > 40 ? R.amber : R.red;
@@ -89,7 +88,6 @@ export const AllIntentsPanel: React.FC<Props> = ({ response }) => (
                 background: R.bg,
                 borderRadius: 2,
                 height: 5,
-                marginBottom: 14,
                 overflow: "hidden",
               }}
             >
@@ -103,29 +101,6 @@ export const AllIntentsPanel: React.FC<Props> = ({ response }) => (
                 }}
               />
             </div>
-
-            {/* Tools */}
-            {result && result.toolsExecuted.length > 0 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {result.toolsExecuted.map((t, j) => (
-                  <span
-                    key={j}
-                    style={{
-                      fontFamily: "'Barlow', sans-serif",
-                      fontSize: 10,
-                      fontWeight: 600,
-                      background: R.bg,
-                      color: R.textSecondary,
-                      border: `1px solid ${R.border}`,
-                      borderRadius: 2,
-                      padding: "2px 8px",
-                    }}
-                  >
-                    {t}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         );
       })}
