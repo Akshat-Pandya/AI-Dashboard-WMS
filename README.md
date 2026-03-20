@@ -17,7 +17,7 @@ Addverb WMS Dashboard is a full-stack, AI-powered warehouse management interface
 | **Frontend** | React 18 + TypeScript + Vite · Recharts |
 | **Backend** | FastAPI (Python 3.12) + SQLAlchemy 2 + PyMySQL |
 | **AI Layer** | Ollama (local LLM) — intent, param, summary, free-SQL |
-| **Database** | MySQL 8.0+ |
+| **Database** | MySQL 8.0+ (Docker container locally / Kubernetes pod in deployment) |
 | **Model** | Configurable via `.env` — default `qwen2.5:7b` |
 
 ### AI Query Pipeline
@@ -95,10 +95,79 @@ AI_WMS_NEW/
 | Python | 3.12+ |
 | Node.js | 18+ (20+ recommended) |
 | MySQL | 8.0+ |
+| Docker | Latest (for local DB container) |
 | Ollama | Latest — https://ollama.ai |
 | Git | Any recent version |
 
 > **Note:** Ollama must be running before starting the backend. The model is downloaded on first use (~4–8 GB depending on model).
+
+---
+
+## Database Setup
+
+### Local Development — Docker Container
+
+The database runs as a MySQL Docker container during local development.
+
+```bash
+docker run -d \
+  --name wms-mysql \
+  -e MYSQL_ROOT_PASSWORD=your_password \
+  -e MYSQL_DATABASE=wms_db \
+  -p 3306:3306 \
+  mysql:8.0
+```
+
+Verify the container is running:
+
+```bash
+docker ps | grep wms-mysql
+```
+
+> **Tip:** The backend `.env` file should point `DB_HOST` to `localhost` (or `host.docker.internal` if the backend itself runs in Docker).
+
+---
+
+### Production Deployment — Kubernetes
+
+In production, the database runs as a **MySQL pod** inside the Kubernetes cluster using the official `mysql:8.0` image.
+
+Database credentials and connection details are **not hardcoded** — they are injected into pods via:
+
+- **`ConfigMap`** — stores non-sensitive configuration such as `DB_HOST`, `DB_PORT`, and `DB_NAME`.
+- **`Secret`** — stores sensitive credentials such as `DB_USER` and `DB_PASSWORD` (base64-encoded).
+
+#### Example ConfigMap (`k8s/configmap.yaml`)
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wms-config
+data:
+  DB_HOST: "wms-mysql-service"
+  DB_PORT: "3306"
+  DB_NAME: "wms_db"
+  OLLAMA_URL: "http://ollama-service:11434/api/generate"
+  MODEL_NAME: "llama3.1:8b"
+```
+
+#### Example Secret (`k8s/secrets.yaml`)
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wms-secrets
+type: Opaque
+data:
+  DB_USER: <base64-encoded-username>
+  DB_PASSWORD: <base64-encoded-password>
+```
+
+> **Note:** Never commit plain-text credentials to the repository. Always use `base64` encoding for Secret values and consider using a secrets manager (e.g., AWS Secrets Manager, HashiCorp Vault) for production workloads.
+
+These values are referenced in the backend `Deployment` manifest via `envFrom` or `env` + `valueFrom` fields, keeping all credentials out of the application code and image.
 
 ---
 
@@ -145,6 +214,8 @@ DB_PASSWORD=your_password
 OLLAMA_URL=http://localhost:11434/api/generate
 MODEL_NAME=llama3.1:8b
 ```
+
+> **Production:** These values are sourced from the Kubernetes `ConfigMap` and `Secret` — the `.env` file is only used for local development.
 
 ### 5. Pull the Ollama model
 
@@ -205,27 +276,28 @@ Three terminals required, started in this order:
 
 | Terminal | Command |
 |---|---|
-| **1 — Ollama** | `ollama serve` |
-| **2 — Backend** | `cd backend && source venv/bin/activate && uvicorn app.main:app --reload --port 8000` |
-| **3 — Frontend** | `cd frontend && npm run dev` |
+| **1 — MySQL (Docker)** | `docker start wms-mysql` |
+| **2 — Ollama** | `ollama serve` |
+| **3 — Backend** | `cd backend && source venv/bin/activate && uvicorn app.main:app --reload --port 8000` |
+| **4 — Frontend** | `cd frontend && npm run dev` |
 
-> **Tip:** Always start Ollama first. The backend connects to Ollama on startup.
+> **Tip:** Always ensure the MySQL container and Ollama are running before starting the backend.
 
 ---
 
 ## Environment Variables
 
-### Backend — `backend/.env`
+### Backend — `backend/.env` (Local) / Kubernetes ConfigMap + Secret (Production)
 
-| Variable | Description |
-|---|---|
-| `DB_HOST` | MySQL host (default: `localhost`) |
-| `DB_PORT` | MySQL port (default: `3306`) |
-| `DB_NAME` | Database name |
-| `DB_USER` | Database user |
-| `DB_PASSWORD` | Database password |
-| `OLLAMA_URL` | Ollama API endpoint |
-| `MODEL_NAME` | Ollama model name (e.g. `llama3.1:8b`) |
+| Variable | Description | Source (Prod) |
+|---|---|---|
+| `DB_HOST` | MySQL host (local: `localhost`, k8s: service name) | ConfigMap |
+| `DB_PORT` | MySQL port (default: `3306`) | ConfigMap |
+| `DB_NAME` | Database name | ConfigMap |
+| `DB_USER` | Database user | Secret |
+| `DB_PASSWORD` | Database password | Secret |
+| `OLLAMA_URL` | Ollama API endpoint | ConfigMap |
+| `MODEL_NAME` | Ollama model name (e.g. `llama3.1:8b`) | ConfigMap |
 
 ### Frontend — `frontend/.env`
 
@@ -303,10 +375,11 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 | Problem | Solution |
 |---|---|
-| Ollama timeout errors | Ensure `ollama serve` is running. Check `OLLAMA_URL` in `.env` matches the Ollama port. |
-| DB connection refused | Verify MySQL is running. Check `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` in `backend/.env`. |
+| DB connection refused (local) | Ensure the MySQL Docker container is running: `docker start wms-mysql`. Check `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` in `backend/.env`. |
+| DB connection refused (k8s) | Verify the MySQL pod is healthy: `kubectl get pods`. Check that the `ConfigMap` and `Secret` are correctly applied: `kubectl describe configmap wms-config` and `kubectl describe secret wms-secrets`. |
+| Ollama timeout errors | Ensure `ollama serve` is running. Check `OLLAMA_URL` in `.env` or ConfigMap matches the Ollama port. |
 | Frontend can't reach backend | Check `VITE_API_BASE_URL` in `frontend/.env`. Ensure backend is on port 8000. Check CORS in `app/main.py`. |
-| Model not found | Run `ollama pull <model-name>` where model-name matches `MODEL_NAME` in `.env`. |
+| Model not found | Run `ollama pull <model-name>` where model-name matches `MODEL_NAME` in `.env` or ConfigMap. |
 | Widgets not rendering | Open browser DevTools console — check for `[WidgetRenderer]` warnings about unresolved `data_key`. |
 | Slow LLM responses | Smaller models (`qwen2.5:7b`) are faster. Ensure Ollama has GPU acceleration enabled if available. |
 | Only one bar in zone chart | Confirm backend returns `zones[]` with numeric or string-numeric fields in `zone_comparison`. |
