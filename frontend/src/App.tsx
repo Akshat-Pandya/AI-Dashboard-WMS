@@ -33,18 +33,11 @@ const App: React.FC = () => {
   const activeQueryRef    = useRef<string>("");
   const activeSavedIdRef  = useRef<string | null>(null); // set when a saved dashboard is active
 
-  // ── Silent background refresh ──────────────────────────────────────────────
-  // Re-runs SQL tools only — no intent/param/summary LLM calls.
-  // Uses POST /query/refresh which accepts the known intents + params and
-  // only re-executes the SQL queries, returning fresh data with the same
-  // widgets and summary.
-  // Falls back to full /query if no current response exists (first load).
-  // Pauses when the browser tab is hidden (Page Visibility API).
-  const silentRefresh = useCallback(async () => {
+  // ── Core refresh logic — always runs regardless of autoRefreshEnabled ────────
+  const doRefresh = useCallback(async () => {
     const query   = activeQueryRef.current;
     const savedId = activeSavedIdRef.current;
     if (!query || loading) return;
-    if (!autoRefreshEnabled) return;
     if (document.hidden) return;
 
     setAutoRefreshing(true);
@@ -66,7 +59,7 @@ const App: React.FC = () => {
           body: JSON.stringify({
             query:   query,
             intents: response.intents ?? [],
-            params:  response.params  ?? null,   // echoed back from backend on first run
+            params:  response.params  ?? null,
             widgets: (response.resultsByIntent ?? []).flatMap(
               (r) => r.widgets ?? []
             ),
@@ -82,11 +75,17 @@ const App: React.FC = () => {
 
       setResponse(updated);
     } catch {
-      // Silently ignore network errors during background refresh
+      // Silently ignore network errors during refresh
     } finally {
       setAutoRefreshing(false);
     }
-  }, [loading, response, autoRefreshEnabled]);
+  }, [loading, response]);
+
+  // ── Silent background refresh — only fires if auto-refresh is enabled ────────
+  const silentRefresh = useCallback(async () => {
+    if (!autoRefreshEnabled) return;
+    await doRefresh();
+  }, [autoRefreshEnabled, doRefresh]);
 
   // Register / clear interval whenever there is an active query
   useEffect(() => {
@@ -193,7 +192,7 @@ const App: React.FC = () => {
                 color: "#9CA3AF", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 3px",
                 display: "flex", alignItems: "center", gap: 6,
               }}>
-                Active Query
+                Query
                 {/* Subtle pulse dot while background refresh is running */}
                 {autoRefreshing && (
                   <span style={{
@@ -207,16 +206,16 @@ const App: React.FC = () => {
               <p style={{
                 fontFamily: "'Barlow', sans-serif", fontSize: 14, color: "#111827",
                 margin: 0, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-              }}>"{response.query}"</p>
+              }}>{response.query}</p>
             </div>
             <SaveButton
               query={response.query}
               intentName={response.selectedIntent}
               onSaved={() => setSavedRefreshKey((k) => k + 1)}
             />
-            {/* Manual refresh button */}
+            {/* Manual refresh button — calls doRefresh directly, works even when auto-refresh is off */}
             <button
-              onClick={silentRefresh}
+              onClick={doRefresh}
               disabled={autoRefreshing || loading}
               title="Refresh data"
               style={{
