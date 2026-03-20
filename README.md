@@ -165,7 +165,6 @@ data:
   DB_PASSWORD: <base64-encoded-password>
 ```
 
-> **Note:** Never commit plain-text credentials to the repository. Always use `base64` encoding for Secret values and consider using a secrets manager (e.g., AWS Secrets Manager, HashiCorp Vault) for production workloads.
 
 These values are referenced in the backend `Deployment` manifest via `envFrom` or `env` + `valueFrom` fields, keeping all credentials out of the application code and image.
 
