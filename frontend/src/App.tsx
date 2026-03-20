@@ -193,7 +193,7 @@ const App: React.FC = () => {
                 color: "#9CA3AF", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 3px",
                 display: "flex", alignItems: "center", gap: 6,
               }}>
-                Query
+                Active Query
                 {/* Subtle pulse dot while background refresh is running */}
                 {autoRefreshing && (
                   <span style={{
@@ -207,7 +207,7 @@ const App: React.FC = () => {
               <p style={{
                 fontFamily: "'Barlow', sans-serif", fontSize: 14, color: "#111827",
                 margin: 0, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-              }}>{response.query}</p>
+              }}>"{response.query}"</p>
             </div>
             <SaveButton
               query={response.query}
@@ -253,33 +253,40 @@ const App: React.FC = () => {
               </span>
             </button>
 
-            {/* Auto-refresh toggle */}
+            {/* Auto-refresh toggle — icon only */}
             <button
               onClick={() => setAutoRefreshEnabled((v) => !v)}
-              title={autoRefreshEnabled ? "Auto-refresh on — click to disable" : "Auto-refresh off — click to enable"}
+              title={autoRefreshEnabled ? "Auto-refresh on (every 30s) — click to disable" : "Auto-refresh off — click to enable"}
               style={{
                 flexShrink: 0,
-                display: "flex", alignItems: "center", gap: 6,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 32, height: 32,
                 background: autoRefreshEnabled ? "#F0FDF4" : "#F9FAFB",
                 border: `1px solid ${autoRefreshEnabled ? "#86EFAC" : "#E5E7EB"}`,
                 borderRadius: 4,
-                padding: "6px 12px",
                 cursor: "pointer",
                 transition: "all 0.15s",
+                padding: 0,
+                position: "relative",
               }}
             >
+              {/* Clock SVG icon */}
+              <svg
+                width="15" height="15" viewBox="0 0 24 24"
+                fill="none" stroke={autoRefreshEnabled ? "#16A34A" : "#9CA3AF"}
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                style={{ transition: "stroke 0.2s" }}
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              {/* Small indicator dot */}
               <span style={{
-                width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+                position: "absolute", top: 4, right: 4,
+                width: 5, height: 5, borderRadius: "50%",
                 background: autoRefreshEnabled ? "#22C55E" : "#D1D5DB",
                 transition: "background 0.2s",
               }} />
-              <span style={{
-                fontFamily: "'Barlow', sans-serif", fontSize: 10, fontWeight: 700,
-                color: autoRefreshEnabled ? "#15803D" : "#9CA3AF",
-                letterSpacing: "0.08em", textTransform: "uppercase",
-              }}>
-                Auto
-              </span>
             </button>
 
             <div style={{ width: 44 }} />

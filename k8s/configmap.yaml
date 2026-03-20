@@ -9,7 +9,7 @@ data:
   DB_NAME: "wms"
   DB_USER: "wmsuser"
   OLLAMA_URL: "http://localhost:11434/api/generate"
-  MODEL_NAME: "qwen2.5:7b"
+  MODEL_NAME: "llama3.1:8b"
   LLM_TIMEOUT: "45"
   CORS_ORIGINS: "http://localhost:5173"
   QUERY_CACHE_SIZE: "15"
