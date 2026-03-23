@@ -13,9 +13,6 @@ spec:
       labels:
         app: wms-backend
     spec:
-      nodeSelector:
-        cloud.google.com/gke-accelerator: nvidia-tesla-t4   # schedule on GPU node
-
       initContainers:
         - name: ollama-model-pull
           image: ollama/ollama:latest
@@ -43,12 +40,10 @@ spec:
           resources:
             requests:
               memory: "4Gi"
-              cpu: "1"
-              nvidia.com/gpu: "1"
-            limits:
-              memory: "8Gi"
               cpu: "2"
-              nvidia.com/gpu: "1"
+            limits:
+              memory: "6Gi"
+              cpu: "4"
 
         - name: wms-api
           image: akshatpandya04/wms-backend:latest
