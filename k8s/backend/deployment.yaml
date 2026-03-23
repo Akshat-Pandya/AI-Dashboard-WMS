@@ -13,6 +13,9 @@ spec:
       labels:
         app: wms-backend
     spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-tesla-t4   # schedule on GPU node
+
       initContainers:
         - name: ollama-model-pull
           image: ollama/ollama:latest
@@ -20,9 +23,11 @@ spec:
           args:
             - |
               ollama serve &
+              PID=$!
               sleep 5
               ollama pull llama3.1:8b
-              kill %1
+              kill $PID || true
+              sleep 2
           volumeMounts:
             - name: ollama-models
               mountPath: /root/.ollama
@@ -37,11 +42,13 @@ spec:
               mountPath: /root/.ollama
           resources:
             requests:
-              memory: "1Gi"
-              cpu: "200m"
+              memory: "4Gi"
+              cpu: "1"
+              nvidia.com/gpu: "1"
             limits:
-              memory: "6Gi"
+              memory: "8Gi"
               cpu: "2"
+              nvidia.com/gpu: "1"
 
         - name: wms-api
           image: akshatpandya04/wms-backend:latest
@@ -80,8 +87,8 @@ spec:
                 name: wms-config
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "50m"
+              memory: "256Mi"
+              cpu: "100m"
             limits:
               memory: "1Gi"
               cpu: "1"
